@@ -4,10 +4,10 @@ import { Note, Task, CalendarEvent, ClipboardItem } from '../domain/types';
 import { searchDriveFiles } from './googleDriveService';
 import { isGoogleAuthed } from './googleCalendarService';
 
-const noteRepository = new Repository<Note>('notes');
-const taskRepository = new Repository<Task>('tasks');
-const eventRepository = new Repository<CalendarEvent>('events');
-const clipboardRepository = new Repository<ClipboardItem>('clipboard');
+const noteRepository = new Repository('notes');
+const taskRepository = new Repository('tasks');
+const eventRepository = new Repository('events');
+const clipboardRepository = new Repository('clipboard');
 
 export async function performUniversalSearch(query: string): Promise<Record<SearchResultType, SearchResult[]>> {
   if (!query.trim()) {

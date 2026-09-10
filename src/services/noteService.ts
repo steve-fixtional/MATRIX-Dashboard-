@@ -2,7 +2,7 @@ import { Note } from '../domain/types';
 import { requestSync } from './sync';
 import { Repository } from './repository';
 
-const noteRepository = new Repository<Note>('notes');
+const noteRepository = new Repository('notes');
 
 export async function getNotes(includeDeleted = false): Promise<Note[]> {
   return noteRepository.list(includeDeleted);

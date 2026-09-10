@@ -1,7 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Note, Task, CalendarEvent, ClipboardItem } from '../domain/types';
 
-interface MatrixDB extends DBSchema {
+export interface MatrixDB extends DBSchema {
   notes: {
     key: string;
     value: Note;

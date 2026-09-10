@@ -2,7 +2,7 @@ import { Task } from '../domain/types';
 import { requestSync } from './sync';
 import { Repository } from './repository';
 
-const taskRepository = new Repository<Task>('tasks');
+const taskRepository = new Repository('tasks');
 
 export async function getTasks(includeDeleted = false): Promise<Task[]> {
   return taskRepository.list(includeDeleted);

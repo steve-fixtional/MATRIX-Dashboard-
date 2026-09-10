@@ -2,7 +2,7 @@ import { Repository } from './repository';
 import { ClipboardItem } from '../domain/types';
 import { syncEngine } from './sync';
 
-const clipboardRepo = new Repository<ClipboardItem>('clipboard');
+const clipboardRepo = new Repository('clipboard');
 
 export async function getClipboardItems(includeDeleted = false): Promise<ClipboardItem[]> {
   return clipboardRepo.list(includeDeleted);

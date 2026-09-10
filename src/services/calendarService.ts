@@ -3,7 +3,7 @@ import { requestSync } from './sync';
 import { getGoogleEvents, saveGoogleEvent, deleteGoogleEvent, isGoogleAuthed } from './googleCalendarService';
 import { Repository } from './repository';
 
-const eventRepository = new Repository<CalendarEvent>('events');
+const eventRepository = new Repository('events');
 
 // Manage selected Google calendars
 export function getSelectedGoogleCalendars(): string[] {
