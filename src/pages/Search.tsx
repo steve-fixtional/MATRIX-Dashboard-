@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Input } from '../components/ui/Input';
 import { Search as SearchIcon, Command, FileText, ListTodo, Calendar, Folder, Clipboard, Bookmark, HardDrive } from 'lucide-react';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useNavigate } from 'react-router-dom';
-import { performUniversalSearch } from '../services/searchEngine';
-import { SearchResult, SearchResultType } from '../domain/searchTypes';
+import { useCommands } from '../hooks/useCommands';
+import { CommandCategory } from '../services/command/commandTypes';
 
-const TYPE_ICONS: Record<SearchResultType, any> = {
+const CATEGORY_ICONS: Record<CommandCategory, any> = {
   notes: FileText,
   tasks: ListTodo,
   events: Calendar,
@@ -15,35 +15,14 @@ const TYPE_ICONS: Record<SearchResultType, any> = {
   clipboard: Clipboard,
   bookmarks: Bookmark,
   drive: HardDrive,
-};
-
-const TYPE_LABELS: Record<SearchResultType, string> = {
-  notes: 'Notes',
-  tasks: 'Tasks',
-  events: 'Calendar Events',
-  projects: 'Projects',
-  clipboard: 'Clipboard',
-  bookmarks: 'Bookmarks',
-  drive: 'Google Drive',
+  actions: SearchIcon,
 };
 
 export function Search() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Record<SearchResultType, SearchResult[]>>({
-    notes: [], tasks: [], events: [], projects: [], clipboard: [], bookmarks: [], drive: []
-  });
-
-  useEffect(() => {
-    const search = async () => {
-      const res = await performUniversalSearch(query);
-      setResults(res);
-    };
-    const timer = setTimeout(search, 200);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const flatResultsCount = (Object.values(results) as SearchResult[][]).reduce((acc, curr) => acc + curr.length, 0);
+  
+  const { commandGroups, flatCommands } = useCommands(query);
 
   return (
     <PageWrapper className="space-y-6">
@@ -119,47 +98,42 @@ export function Search() {
 
       {query.trim() !== '' && (
         <div className="pt-4 max-w-3xl space-y-8">
-          {flatResultsCount === 0 ? (
+          {flatCommands.length === 0 ? (
             <div className="py-12 text-center text-neutral-500">
               No results found for "{query}"
             </div>
           ) : (
-            (Object.keys(results) as SearchResultType[]).map(type => {
-              const groupResults = results[type];
-              if (groupResults.length === 0) return null;
+            commandGroups.map(group => {
+              if (group.commands.length === 0) return null;
               
-              const Icon = TYPE_ICONS[type];
+              const Icon = CATEGORY_ICONS[group.categoryId] || SearchIcon;
               
               return (
-                <div key={type} className="mb-8 last:mb-0">
+                <div key={group.category} className="mb-8 last:mb-0">
                   <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3 flex items-center gap-2 px-1">
                     <Icon className="h-4 w-4" />
-                    {TYPE_LABELS[type]}
+                    {group.category}
                   </h2>
                   <div className="space-y-2">
-                    {groupResults.map(result => (
+                    {group.commands.map(command => (
                       <button
-                        key={result.id}
-                        onClick={() => {
-                          if (type === 'drive') {
-                            window.open(result.url, '_blank');
-                          } else {
-                            navigate(result.url);
-                          }
-                        }}
+                        key={command.id}
+                        onClick={() => command.onSelect()}
                         className="w-full text-left px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all flex flex-col gap-1 outline-none"
                       >
                         <div className="flex items-center justify-between gap-4">
                           <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                            {result.title}
+                            {command.title}
                           </span>
-                          <span className="text-xs text-neutral-400 whitespace-nowrap shrink-0">
-                            {new Date(result.updatedAt).toLocaleDateString()}
-                          </span>
+                          {command.updatedAt && (
+                            <span className="text-xs text-neutral-400 whitespace-nowrap shrink-0">
+                              {new Date(command.updatedAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
-                        {result.snippet && (
+                        {command.snippet && (
                           <div className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
-                            {result.snippet}
+                            {command.snippet}
                           </div>
                         )}
                       </button>

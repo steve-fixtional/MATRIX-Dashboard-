@@ -70,3 +70,20 @@ export interface User {
   displayName: string | null;
   photoURL: string | null;
 }
+
+export interface DashboardPreference extends BaseEntity {
+  widgetVisibility: Record<string, boolean>;
+  widgetOrder: Record<string, number>;
+}
+
+export type ThemePreference = 'system' | 'light' | 'dark';
+export type TempUnit = 'celsius' | 'fahrenheit';
+export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
+export type WeekStart = 'sunday' | 'monday';
+
+export interface AppSettings extends BaseEntity {
+  theme: ThemePreference;
+  weatherUnit: TempUnit;
+  calendarDefaultView: CalendarView;
+  calendarWeekStart: WeekStart;
+}

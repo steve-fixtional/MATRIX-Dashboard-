@@ -1,19 +1,60 @@
 import { CalendarEvent } from '../domain/types';
 import { requestSync } from './sync';
-import { getGoogleEvents, saveGoogleEvent, deleteGoogleEvent, isGoogleAuthed } from './googleCalendarService';
+import { getGoogleEvents, saveGoogleEvent, deleteGoogleEvent, isGoogleAuthed, getGoogleCalendars, loginGoogle, logoutGoogle, subscribeToGoogleAuth } from './googleCalendarService';
 import { Repository } from './repository';
 
 const eventRepository = new Repository('events');
 
-// Manage selected Google calendars
-export function getSelectedGoogleCalendars(): string[] {
-  const stored = localStorage.getItem('selectedGoogleCalendars');
-  if (stored) return JSON.parse(stored);
+export interface ExternalCalendar {
+  id: string;
+  summary: string;
+  primary?: boolean;
+}
+
+export function isExternalCalendarAvailable(): boolean {
+  return isGoogleAuthed();
+}
+
+export async function getExternalCalendars(): Promise<ExternalCalendar[]> {
+  if (!isGoogleAuthed()) return [];
+  const cals = await getGoogleCalendars();
+  return cals.map(c => ({
+    id: c.id,
+    summary: c.summary,
+    primary: c.primary
+  }));
+}
+
+export function loginExternalProvider() {
+  return loginGoogle();
+}
+
+export function logoutExternalProvider() {
+  return logoutGoogle();
+}
+
+export function subscribeToExternalProviderAuth(callback: (authed: boolean) => void) {
+  return subscribeToGoogleAuth(callback);
+}
+
+// Manage selected external calendars
+export function getSelectedExternalCalendars(): string[] {
+  const stored = localStorage.getItem('selectedExternalCalendars');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
   return ['primary']; // default
 }
 
-export function setSelectedGoogleCalendars(calendarIds: string[]) {
-  localStorage.setItem('selectedGoogleCalendars', JSON.stringify(calendarIds));
+export function setSelectedExternalCalendars(calendarIds: string[]) {
+  localStorage.setItem('selectedExternalCalendars', JSON.stringify(calendarIds));
 }
 
 export async function getEvents(start: number, end: number, includeDeleted = false): Promise<CalendarEvent[]> {
@@ -24,19 +65,19 @@ export async function getEvents(start: number, end: number, includeDeleted = fal
     return e.startTime <= end && e.endTime >= start;
   });
   
-  let googleEvents: CalendarEvent[] = [];
-  if (isGoogleAuthed()) {
+  let externalEvents: CalendarEvent[] = [];
+  if (isExternalCalendarAvailable()) {
     try {
-      const selectedCalendars = getSelectedGoogleCalendars();
+      const selectedCalendars = getSelectedExternalCalendars();
       if (selectedCalendars.length > 0) {
-        googleEvents = await getGoogleEvents(selectedCalendars, start, end);
+        externalEvents = await getGoogleEvents(selectedCalendars, start, end);
       }
     } catch (e) {
-      console.warn('Failed to fetch Google events, working offline.', e);
+      console.warn('Failed to fetch external events, working offline.', e);
     }
   }
 
-  const combined = [...localEvents, ...googleEvents];
+  const combined = [...localEvents, ...externalEvents];
   return combined.sort((a, b) => a.startTime - b.startTime);
 }
 

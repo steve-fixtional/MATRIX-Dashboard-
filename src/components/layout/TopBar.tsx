@@ -2,12 +2,14 @@ import { Search, Plus, User } from 'lucide-react';
 import { SyncIndicator } from '../ui/SyncIndicator';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../store/AuthContext';
+import { PWAInstallButton } from '../ui/PWAInstallButton';
+import { Link } from 'react-router-dom';
 
 export function TopBar() {
   const { user } = useAuth();
   
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-neutral-200/80 bg-white/80 px-4 backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-950/80 sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-neutral-200/80 bg-white/80 px-4 backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-950/80 sm:gap-x-6 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top)] h-[calc(4rem+env(safe-area-inset-top))]">
       <div className="flex flex-1 items-center gap-x-4 self-stretch lg:gap-x-6">
         <button
           type="button"
@@ -21,7 +23,10 @@ export function TopBar() {
           </kbd>
         </button>
       </div>
-      <div className="flex items-center gap-x-4 lg:gap-x-6">
+      <div className="flex items-center gap-x-3 sm:gap-x-4 lg:gap-x-6">
+        <div>
+          <PWAInstallButton />
+        </div>
         <SyncIndicator />
         
         {/* Desktop Quick Action */}
@@ -36,13 +41,13 @@ export function TopBar() {
 
         {/* Profile dropdown placeholder */}
         <div className="flex items-center">
-          <button className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950 transition-transform active:scale-95">
+          <Link to="/settings" className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950 transition-transform active:scale-95">
             {user?.photoURL ? (
               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
             ) : (
               <User className="h-4 w-4 text-neutral-500" />
             )}
-          </button>
+          </Link>
         </div>
       </div>
     </header>

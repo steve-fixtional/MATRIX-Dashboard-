@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { CalendarEvent } from '../../domain/types';
 import { Plus, X, Calendar as CalendarIcon, Clock, MapPin, AlignLeft, RefreshCw, Bell } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { isGoogleAuthed, getGoogleCalendars, GoogleCalendarListEntry } from '../../services/googleCalendarService';
+import { useEventForm } from './hooks/useEventForm';
 
 interface EventCreatorProps {
   initialDate?: Date;
@@ -13,99 +13,27 @@ interface EventCreatorProps {
 }
 
 export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDelete }: EventCreatorProps) {
-  const [title, setTitle] = useState(eventToEdit?.title || '');
-  const [description, setDescription] = useState(eventToEdit?.description || '');
-  const [location, setLocation] = useState(eventToEdit?.location || '');
-  const [allDay, setAllDay] = useState(eventToEdit?.allDay || false);
-  
-  const [provider, setProvider] = useState<'local' | 'google'>(eventToEdit?.provider || 'local');
-  const [googleCalendars, setGoogleCalendars] = useState<GoogleCalendarListEntry[]>([]);
-  const [selectedGoogleCalendarId, setSelectedGoogleCalendarId] = useState<string>('primary');
-  
-  useEffect(() => {
-    if (isGoogleAuthed()) {
-      getGoogleCalendars().then(cals => {
-        setGoogleCalendars(cals);
-        if (!eventToEdit && cals.length > 0 && provider === 'local') {
-          // If google is connected, default to it
-          setProvider('google');
-          const primary = cals.find(c => c.primary) || cals[0];
-          if (primary) setSelectedGoogleCalendarId(primary.id);
-        }
-      });
-    }
-  }, [eventToEdit, provider]);
-  
-  const defaultStart = new Date(initialDate || new Date());
-  if (!initialDate) {
-    defaultStart.setMinutes(0);
-    defaultStart.setSeconds(0);
-    defaultStart.setMilliseconds(0);
-    defaultStart.setHours(defaultStart.getHours() + 1);
-  } else if (!eventToEdit && !allDay) {
-    // If clicking a date, maybe set time to 9 AM
-    defaultStart.setHours(9, 0, 0, 0);
-  }
-
-  const defaultEnd = new Date(defaultStart);
-  defaultEnd.setHours(defaultStart.getHours() + 1);
-
-  const [startTime, setStartTime] = useState<number>(eventToEdit?.startTime || defaultStart.getTime());
-  const [endTime, setEndTime] = useState<number>(eventToEdit?.endTime || defaultEnd.getTime());
-
-  // Simplify string date handling for inputs
-  const startObj = new Date(startTime);
-  const endObj = new Date(endTime);
-
-  const startDateStr = startObj.toISOString().substring(0, 10);
-  const startTimeStr = startObj.toTimeString().substring(0, 5);
-  
-  const endDateStr = endObj.toISOString().substring(0, 10);
-  const endTimeStr = endObj.toTimeString().substring(0, 5);
-
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newD = new Date(e.target.value + 'T' + startTimeStr);
-    if (!isNaN(newD.getTime())) setStartTime(newD.getTime());
-  };
-
-  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newD = new Date(startDateStr + 'T' + e.target.value);
-    if (!isNaN(newD.getTime())) setStartTime(newD.getTime());
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newD = new Date(e.target.value + 'T' + endTimeStr);
-    if (!isNaN(newD.getTime())) setEndTime(newD.getTime());
-  };
-
-  const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newD = new Date(endDateStr + 'T' + e.target.value);
-    if (!isNaN(newD.getTime())) setEndTime(newD.getTime());
-  };
+  const {
+    title, setTitle,
+    description, setDescription,
+    location, setLocation,
+    allDay, setAllDay,
+    provider, setProvider,
+    externalCalendars,
+    selectedExternalCalendarId, setSelectedExternalCalendarId,
+    startDateStr, startTimeStr,
+    endDateStr, endTimeStr,
+    handleStartDateChange, handleStartTimeChange,
+    handleEndDateChange, handleEndTimeChange,
+    buildEventData
+  } = useEventForm(initialDate, eventToEdit);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    
-    // Construct a composite ID for new Google events so the service knows which calendar to use
-    let targetId = eventToEdit?.id;
-    if (!targetId && provider === 'google') {
-      targetId = `gcal-${selectedGoogleCalendarId}-new`;
+    const data = buildEventData();
+    if (data) {
+      onSave(data);
     }
-
-    onSave({
-      id: targetId,
-      title: title.trim(),
-      description: description.trim(),
-      location: location.trim(),
-      startTime,
-      endTime,
-      allDay,
-      provider,
-      reminders: [],
-      recurrenceRule: null,
-      providerEventId: eventToEdit?.providerEventId || null
-    });
   };
 
   return (
@@ -131,25 +59,25 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
           </div>
 
           <div className="space-y-4">
-            {googleCalendars.length > 0 && !eventToEdit && (
+            {externalCalendars.length > 0 && !eventToEdit && (
               <div className="flex items-center gap-3">
                 <CalendarIcon className="h-4 w-4 text-neutral-500 shrink-0" />
                 <select 
-                  value={provider === 'google' ? selectedGoogleCalendarId : 'local'}
+                  value={provider === 'google' ? selectedExternalCalendarId : 'local'}
                   onChange={e => {
                     const val = e.target.value;
                     if (val === 'local') {
                       setProvider('local');
                     } else {
                       setProvider('google');
-                      setSelectedGoogleCalendarId(val);
+                      setSelectedExternalCalendarId(val);
                     }
                   }}
                   className="w-full bg-transparent border-none focus:ring-0 p-1.5 text-sm dark:text-neutral-100 cursor-pointer text-neutral-900 font-medium"
                 >
                   <option value="local">Local Calendar (Offline)</option>
-                  {googleCalendars.map(cal => (
-                    <option key={cal.id} value={cal.id}>Google Calendar: {cal.summary}</option>
+                  {externalCalendars.map(cal => (
+                    <option key={cal.id} value={cal.id}>External Calendar: {cal.summary}</option>
                   ))}
                 </select>
               </div>
@@ -157,7 +85,7 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
             {eventToEdit && (
               <div className="flex items-center gap-3 py-1 text-sm text-neutral-500 font-medium">
                 <CalendarIcon className="h-4 w-4 shrink-0" />
-                {eventToEdit.provider === 'google' ? 'Google Calendar' : 'Local Calendar'}
+                {eventToEdit.provider === 'google' ? 'External Calendar' : 'Local Calendar'}
               </div>
             )}
 
@@ -175,15 +103,15 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
               <div className="space-y-1">
                 <label className="text-xs font-medium text-neutral-500">Starts</label>
                 <div className="flex gap-2">
-                  <input type="date" required value={startDateStr} onChange={handleStartDateChange} className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />
-                  {!allDay && <input type="time" required value={startTimeStr} onChange={handleStartTimeChange} className="w-[100px] bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />}
+                  <input type="date" required value={startDateStr} onChange={e => handleStartDateChange(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />
+                  {!allDay && <input type="time" required value={startTimeStr} onChange={e => handleStartTimeChange(e.target.value)} className="w-[100px] bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />}
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-neutral-500">Ends</label>
                 <div className="flex gap-2">
-                  <input type="date" required value={endDateStr} onChange={handleEndDateChange} className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />
-                  {!allDay && <input type="time" required value={endTimeStr} onChange={handleEndTimeChange} className="w-[100px] bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />}
+                  <input type="date" required value={endDateStr} onChange={e => handleEndDateChange(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />
+                  {!allDay && <input type="time" required value={endTimeStr} onChange={e => handleEndTimeChange(e.target.value)} className="w-[100px] bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-md p-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900" />}
                 </div>
               </div>
             </div>

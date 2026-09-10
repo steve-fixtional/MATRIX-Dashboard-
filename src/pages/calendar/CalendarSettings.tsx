@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { X, Calendar as CalendarIcon, LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { 
-  isGoogleAuthed, 
-  loginGoogle, 
-  logoutGoogle, 
-  subscribeToGoogleAuth, 
-  getGoogleCalendars, 
-  GoogleCalendarListEntry 
-} from '../../services/googleCalendarService';
-import { getSelectedGoogleCalendars, setSelectedGoogleCalendars } from '../../services/calendarService';
+  isExternalCalendarAvailable,
+  loginExternalProvider,
+  logoutExternalProvider,
+  subscribeToExternalProviderAuth,
+  getExternalCalendars,
+  ExternalCalendar,
+  getSelectedExternalCalendars,
+  setSelectedExternalCalendars
+} from '../../services/calendarService';
 
 interface CalendarSettingsProps {
   onClose: () => void;
@@ -17,13 +18,13 @@ interface CalendarSettingsProps {
 }
 
 export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSettingsProps) {
-  const [isAuthed, setIsAuthed] = useState(isGoogleAuthed());
-  const [calendars, setCalendars] = useState<GoogleCalendarListEntry[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>(getSelectedGoogleCalendars());
+  const [isAuthed, setIsAuthed] = useState(isExternalCalendarAvailable());
+  const [calendars, setCalendars] = useState<ExternalCalendar[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(getSelectedExternalCalendars());
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = subscribeToGoogleAuth(authed => {
+    const unsubscribe = subscribeToExternalProviderAuth(authed => {
       setIsAuthed(authed);
     });
     return unsubscribe;
@@ -39,7 +40,7 @@ export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSetting
 
   const loadCalendars = async () => {
     setIsLoading(true);
-    const cals = await getGoogleCalendars();
+    const cals = await getExternalCalendars();
     setCalendars(cals);
     setIsLoading(false);
   };
@@ -48,15 +49,16 @@ export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSetting
     const newSelected = selectedIds.includes(id) 
       ? selectedIds.filter(calId => calId !== id)
       : [...selectedIds, id];
-    
+      
     setSelectedIds(newSelected);
-    setSelectedGoogleCalendars(newSelected);
+    setSelectedExternalCalendars(newSelected);
     onSettingsChanged();
   };
 
-  const handleLogin = () => loginGoogle();
+  const handleLogin = () => loginExternalProvider();
+
   const handleLogout = () => {
-    logoutGoogle();
+    logoutExternalProvider();
     onSettingsChanged();
   };
 
@@ -75,9 +77,9 @@ export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSetting
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Google Calendar Integration</h3>
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">External Calendar Integration</h3>
               <p className="text-sm text-neutral-500">
-                Connect your Google account to sync events automatically.
+                Connect your account to sync events automatically.
               </p>
             </div>
             
@@ -86,7 +88,7 @@ export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSetting
                 <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-xl border border-neutral-100 dark:border-neutral-800">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white dark:bg-neutral-900 rounded-full flex items-center justify-center shadow-sm">
-                      <img src="https://www.gstatic.com/images/branding/product/1x/calendar_48dp.png" alt="Google Calendar" className="w-6 h-6" />
+                      <CalendarIcon className="w-6 h-6 text-neutral-500" />
                     </div>
                     <div>
                       <div className="text-sm font-medium">Connected</div>
@@ -134,7 +136,7 @@ export function CalendarSettings({ onClose, onSettingsChanged }: CalendarSetting
               </div>
             ) : (
               <Button onClick={handleLogin} className="w-full">
-                <LogIn className="h-4 w-4 mr-2" /> Connect Google Account
+                <LogIn className="h-4 w-4 mr-2" /> Connect Account
               </Button>
             )}
           </div>

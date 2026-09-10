@@ -47,7 +47,7 @@ export async function performUniversalSearch(query: string): Promise<Record<Sear
     return items.map(item => ({
       id: item.id,
       type,
-      title: item[titleField] || (type === 'clipboard' ? (item.contentType.toUpperCase() + ' Snippet') : 'Untitled'),
+      title: item[titleField] || (type === 'clipboard' ? ((item.contentType?.toUpperCase() || 'UNKNOWN') + ' Snippet') : 'Untitled'),
       snippet: (item[snippetField] || '').substring(0, 100).replace(/\n/g, ' ') + ((item[snippetField]?.length > 100) ? '...' : ''),
       updatedAt: item.updatedAt || new Date(item.modifiedTime || Date.now()).getTime(),
       url: type === 'drive' ? item.webViewLink : `${urlPrefix}${item.id}`

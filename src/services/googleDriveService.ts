@@ -1,5 +1,11 @@
 import { getAccessToken, isGoogleAuthed, notifyAuthChange } from './googleCalendarService';
 
+declare global {
+  interface Window {
+    gapi?: any;
+  }
+}
+
 export interface DriveFile {
   id: string;
   name: string;

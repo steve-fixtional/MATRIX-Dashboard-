@@ -4,15 +4,15 @@ import { collection, doc, getDocs, setDoc, query, where, writeBatch, deleteDoc }
 import { BaseEntity } from '../domain/types';
 import { isClipboardSyncEnabled } from './clipboardService';
 
-type CollectionName = 'notes' | 'tasks' | 'events' | 'clipboard';
+type CollectionName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'preferences';
 
 export class SyncEngine {
   private isSyncing = false;
-  public onSyncStateChange?: (state: 'synced' | 'syncing' | 'offline' | 'error') => void;
+  public onSyncStateChange?: (state: 'synced' | 'syncing' | 'offline' | 'error', error?: Error) => void;
   private retryTimeout: number | null = null;
   private baseDelay = 1000;
 
-  constructor(onSyncStateChange?: (state: 'synced' | 'syncing' | 'offline' | 'error') => void) {
+  constructor(onSyncStateChange?: (state: 'synced' | 'syncing' | 'offline' | 'error', error?: Error) => void) {
     this.onSyncStateChange = onSyncStateChange;
     window.addEventListener('online', () => {
       this.baseDelay = 1000;
@@ -20,9 +20,9 @@ export class SyncEngine {
     });
   }
 
-  private notify(state: 'synced' | 'syncing' | 'offline' | 'error') {
+  private notify(state: 'synced' | 'syncing' | 'offline' | 'error', error?: Error) {
     if (this.onSyncStateChange) {
-      this.onSyncStateChange(state);
+      this.onSyncStateChange(state, error);
     }
   }
 
@@ -32,6 +32,34 @@ export class SyncEngine {
       this.syncAll();
     }, this.baseDelay);
     this.baseDelay = Math.min(this.baseDelay * 2, 60000); // Exponential backoff up to 1 min
+  }
+
+  async getPendingCount(): Promise<number> {
+    const localDb = await getDB();
+    let count = 0;
+    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences'];
+    for (const c of collections) {
+      const tx = localDb.transaction(c, 'readonly');
+      const index = tx.store.index('by-syncStatus');
+      const creates = await index.count('pending_create');
+      const updates = await index.count('pending_update');
+      const deletes = await index.count('pending_delete');
+      count += creates + updates + deletes;
+    }
+    return count;
+  }
+
+  async getLastSyncedAt(): Promise<number | null> {
+    const localDb = await getDB();
+    let maxTime = 0;
+    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences'];
+    for (const c of collections) {
+      const meta = await localDb.get('syncMeta', c);
+      if (meta && meta.lastSyncedAt && meta.lastSyncedAt > maxTime) {
+        maxTime = meta.lastSyncedAt;
+      }
+    }
+    return maxTime === 0 ? null : maxTime;
   }
 
   async syncAll() {
@@ -50,14 +78,15 @@ export class SyncEngine {
       await this.syncCollection('notes');
       await this.syncCollection('tasks');
       await this.syncCollection('events');
+      await this.syncCollection('preferences');
       if (isClipboardSyncEnabled()) {
         await this.syncCollection('clipboard');
       }
       this.notify('synced');
       this.baseDelay = 1000; // Reset backoff on success
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sync error:', error);
-      this.notify('error');
+      this.notify('error', error instanceof Error ? error : new Error(String(error)));
       this.scheduleRetry();
     } finally {
       this.isSyncing = false;

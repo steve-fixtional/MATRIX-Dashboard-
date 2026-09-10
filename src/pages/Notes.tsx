@@ -50,7 +50,7 @@ export function Notes() {
     setSelectedNoteId(newNote.id);
   };
 
-  const handleUpdateNote = async (id: string, updates: Partial<Note>) => {
+  const handleUpdateNote = (id: string, updates: Partial<Note>) => {
     const currentNote = notes.find(n => n.id === id);
     if (!currentNote) return;
     
@@ -60,15 +60,12 @@ export function Notes() {
       // Keep pinned on top if we want, or just by updatedAt
       return b.updatedAt - a.updatedAt;
     }));
-
-    await saveNote({ ...currentNote, ...updates });
   };
 
-  const handleDeleteNote = async (id: string) => {
+  const handleDeleteNote = (id: string) => {
     // Optimistic delete
     setNotes(prev => prev.filter(n => n.id !== id));
     setSelectedNoteId(null);
-    await deleteNote(id);
   };
 
   const filteredNotes = useMemo(() => {

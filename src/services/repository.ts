@@ -109,6 +109,6 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
 
   async queryBySyncStatus(status: SyncStatus): Promise<T[]> {
     const db = await getDB();
-    return (await db.getAllFromIndex(this.storeName, 'by-syncStatus', status)) as T[];
+    return (await db.getAllFromIndex(this.storeName, 'by-syncStatus' as any, status as any)) as T[];
   }
 }

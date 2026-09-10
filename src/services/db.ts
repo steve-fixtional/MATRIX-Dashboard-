@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Note, Task, CalendarEvent, ClipboardItem } from '../domain/types';
+import { Note, Task, CalendarEvent, ClipboardItem, DashboardPreference, AppSettings } from '../domain/types';
 
 export interface MatrixDB extends DBSchema {
   notes: {
@@ -22,6 +22,11 @@ export interface MatrixDB extends DBSchema {
     value: ClipboardItem;
     indexes: { 'by-updatedAt': number, 'by-syncStatus': string };
   };
+  preferences: {
+    key: string;
+    value: DashboardPreference | AppSettings;
+    indexes: { 'by-updatedAt': number, 'by-syncStatus': string };
+  };
   syncMeta: {
     key: string;
     value: { key: string; lastSyncedAt: number };
@@ -32,7 +37,7 @@ let dbPromise: Promise<IDBPDatabase<MatrixDB>> | null = null;
 
 export function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<MatrixDB>('matrix-db', 3, {
+    dbPromise = openDB<MatrixDB>('matrix-db', 4, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains('notes')) {
           const store = db.createObjectStore('notes', { keyPath: 'id' });
@@ -67,7 +72,7 @@ export function getDB() {
           store.createIndex('by-syncStatus', 'syncStatus');
         }
 
-        if (!db.objectStoreNames.contains('syncMeta')) {
+        if (!db.objectStoreNames.contains('preferences')) { const store = db.createObjectStore('preferences', { keyPath: 'id' }); store.createIndex('by-updatedAt', 'updatedAt'); store.createIndex('by-syncStatus', 'syncStatus'); } if (!db.objectStoreNames.contains('syncMeta')) {
           db.createObjectStore('syncMeta', { keyPath: 'key' });
         }
       },

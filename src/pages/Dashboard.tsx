@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { WidgetLayout, DEFAULT_DASHBOARD_LAYOUT } from '../domain/dashboardTypes';
 import { ClockWidget } from '../components/dashboard/ClockWidget';
@@ -7,26 +7,29 @@ import { TasksWidget } from '../components/dashboard/TasksWidget';
 import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { QuickNoteWidget } from '../components/dashboard/QuickNoteWidget';
 import { RecentNotesWidget } from '../components/dashboard/RecentNotesWidget';
-import { QuickActionsWidget } from '../components/dashboard/QuickActionsWidget';
 import { SyncIndicator } from '../components/ui/SyncIndicator';
+import { getDashboardPreferences, migrateLegacyLayout, mergeLayoutWithPreferences } from '../services/dashboardService';
+import { useSyncState } from '../store/SyncContext';
 
 export function Dashboard() {
-  const [layout, setLayout] = useState<WidgetLayout[]>([]);
+  const [layout, setLayout] = useState<WidgetLayout[]>(DEFAULT_DASHBOARD_LAYOUT);
+  const { syncStatus } = useSyncState();
+
+  const loadPreferences = useCallback(async () => {
+    await migrateLegacyLayout();
+    const pref = await getDashboardPreferences();
+    setLayout(mergeLayoutWithPreferences(DEFAULT_DASHBOARD_LAYOUT, pref));
+  }, []);
 
   useEffect(() => {
-    // In the future, this would load from IndexedDB or remote config
-    // For now, load default or local storage
-    const savedLayout = localStorage.getItem('matrix_dashboard_layout');
-    if (savedLayout) {
-      try {
-        setLayout(JSON.parse(savedLayout));
-      } catch (e) {
-        setLayout(DEFAULT_DASHBOARD_LAYOUT);
-      }
-    } else {
-      setLayout(DEFAULT_DASHBOARD_LAYOUT);
+    loadPreferences().catch(console.error);
+  }, [loadPreferences]);
+
+  useEffect(() => {
+    if (syncStatus === 'synced') {
+      loadPreferences().catch(console.error);
     }
-  }, []);
+  }, [syncStatus, loadPreferences]);
 
   const renderWidget = (widget: WidgetLayout) => {
     switch (widget.type) {
@@ -36,7 +39,6 @@ export function Dashboard() {
       case 'events': return <EventsWidget />;
       case 'quick_note': return <QuickNoteWidget />;
       case 'recent_notes': return <RecentNotesWidget />;
-      case 'quick_actions': return <QuickActionsWidget />;
       default: return null;
     }
   };

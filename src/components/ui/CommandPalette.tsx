@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { Search as SearchIcon, FileText, ListTodo, Calendar, Folder, Clipboard, Bookmark, X, HardDrive } from 'lucide-react';
-import { performUniversalSearch } from '../../services/searchEngine';
-import { SearchResult, SearchResultType } from '../../domain/searchTypes';
+import { useCommandPalette } from '../../hooks/useCommandPalette';
+import { CommandCategory } from '../../services/command/commandTypes';
 
-const TYPE_ICONS: Record<SearchResultType, any> = {
+const CATEGORY_ICONS: Record<CommandCategory, any> = {
   notes: FileText,
   tasks: ListTodo,
   events: Calendar,
@@ -12,102 +11,23 @@ const TYPE_ICONS: Record<SearchResultType, any> = {
   clipboard: Clipboard,
   bookmarks: Bookmark,
   drive: HardDrive,
-};
-
-const TYPE_LABELS: Record<SearchResultType, string> = {
-  notes: 'Notes',
-  tasks: 'Tasks',
-  events: 'Calendar Events',
-  projects: 'Projects',
-  clipboard: 'Clipboard',
-  bookmarks: 'Bookmarks',
-  drive: 'Google Drive',
+  actions: SearchIcon, // Default icon for actions
 };
 
 export function CommandPalette() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Record<SearchResultType, SearchResult[]>>({
-    notes: [], tasks: [], events: [], projects: [], clipboard: [], bookmarks: [], drive: []
-  });
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
-
-  // Listen for global toggle
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen(prev => !prev);
-      }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Expose toggle to window for other components (like TopBar)
-  useEffect(() => {
-    (window as any).toggleCommandPalette = () => setIsOpen(prev => !prev);
-    return () => {
-      delete (window as any).toggleCommandPalette;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      setQuery('');
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const search = async () => {
-      const res = await performUniversalSearch(query);
-      setResults(res);
-      setSelectedIndex(0);
-    };
-    const timer = setTimeout(search, 150);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const flatResults = [
-    ...results.notes,
-    ...results.tasks,
-    ...results.events,
-    ...results.projects,
-    ...results.clipboard,
-    ...results.bookmarks,
-    ...results.drive
-  ];
-
-  const handleSelect = (result: SearchResult) => {
-    setIsOpen(false);
-    if (result.type === 'drive') {
-      window.open(result.url, '_blank');
-    } else {
-      navigate(result.url);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % Math.max(flatResults.length, 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + flatResults.length) % Math.max(flatResults.length, 1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (flatResults.length > 0) {
-        handleSelect(flatResults[selectedIndex]);
-      }
-    }
-  };
+  const {
+    isOpen,
+    setIsOpen,
+    query,
+    setQuery,
+    inputRef,
+    commandGroups,
+    flatCommands,
+    selectedIndex,
+    setSelectedIndex,
+    handleKeyDown,
+    handleSelect
+  } = useCommandPalette();
 
   if (!isOpen) return null;
 
@@ -141,55 +61,56 @@ export function CommandPalette() {
 
         {/* Results list */}
         <div className="flex-1 overflow-y-auto p-2">
-          {flatResults.length === 0 && query.trim() !== '' && (
+          {flatCommands.length === 0 && query.trim() !== '' && (
             <div className="py-14 text-center text-sm text-neutral-500">
               No results found for "{query}"
             </div>
           )}
-          {flatResults.length === 0 && query.trim() === '' && (
+          {flatCommands.length === 0 && query.trim() === '' && (
             <div className="py-14 text-center text-sm text-neutral-500 flex flex-col items-center gap-2">
               <SearchIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-700" />
               <p>Type to search across everything...</p>
             </div>
           )}
 
-          {(Object.keys(results) as SearchResultType[]).map(type => {
-            const groupResults = results[type];
-            if (groupResults.length === 0) return null;
+          {commandGroups.map(group => {
+            if (group.commands.length === 0) return null;
             
-            const Icon = TYPE_ICONS[type];
+            const Icon = CATEGORY_ICONS[group.categoryId] || SearchIcon;
             
             return (
-              <div key={type} className="mb-4 last:mb-0">
+              <div key={group.category} className="mb-4 last:mb-0">
                 <div className="px-3 py-1.5 text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-2">
                   <Icon className="h-3.5 w-3.5" />
-                  {TYPE_LABELS[type]}
+                  {group.category}
                 </div>
                 <div className="space-y-1">
-                  {groupResults.map(result => {
-                    const globalIndex = flatResults.findIndex(r => r.id === result.id);
+                  {group.commands.map(command => {
+                    const globalIndex = flatCommands.findIndex(c => c.id === command.id);
                     const isSelected = selectedIndex === globalIndex;
                     
                     return (
                       <button
-                        key={result.id}
+                        key={command.id}
                         className={`w-full text-left px-3 py-2 rounded-lg flex flex-col gap-0.5 outline-none transition-colors ${
                           isSelected ? 'bg-neutral-100 dark:bg-neutral-800' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                         }`}
-                        onClick={() => handleSelect(result)}
+                        onClick={() => handleSelect(command)}
                         onMouseEnter={() => setSelectedIndex(globalIndex)}
                       >
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
-                            {result.title}
+                            {command.title}
                           </span>
-                          <span className="text-[10px] text-neutral-400 whitespace-nowrap shrink-0">
-                            {new Date(result.updatedAt).toLocaleDateString()}
-                          </span>
+                          {command.updatedAt && (
+                            <span className="text-[10px] text-neutral-400 whitespace-nowrap shrink-0">
+                              {new Date(command.updatedAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
-                        {result.snippet && (
+                        {command.snippet && (
                           <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-                            {result.snippet}
+                            {command.snippet}
                           </div>
                         )}
                       </button>
