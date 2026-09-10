@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "Note": {
+      "title": "Note",
+      "description": "A text note",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 50000 },
+        "tags": { "type": "array", "items": { "type": "string", "maxLength": 50 }, "maxLength": 20 },
+        "pinned": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "favorite": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["title", "content", "tags", "pinned", "archived", "favorite", "createdAt", "updatedAt", "version"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A to-do item",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "completed": { "type": "boolean" },
+        "dueDate": { "type": ["number", "null"] },
+        "projectId": { "type": ["string", "null"], "maxLength": 128 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["title", "completed", "createdAt", "updatedAt", "version"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "A scheduled event",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "allDay": { "type": "boolean" },
+        "location": { "type": "string", "maxLength": 500 },
+        "recurrenceRule": { "type": ["string", "null"], "maxLength": 500 },
+        "reminders": { "type": "array", "items": { "type": "number" }, "maxLength": 10 },
+        "provider": { "type": "string" },
+        "providerEventId": { "type": ["string", "null"], "maxLength": 256 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["title", "startTime", "endTime", "allDay", "createdAt", "updatedAt", "version"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/Note" },
+      "description": "User notes"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User tasks"
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/CalendarEvent" },
+      "description": "User calendar events"
+    }
+  }
+}
