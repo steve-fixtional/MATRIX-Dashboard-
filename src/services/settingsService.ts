@@ -1,6 +1,6 @@
 import { getDB } from './db';
 import { AppSettings } from '../domain/types';
-import { syncEngine } from './sync';
+import { requestSync } from './sync';
 
 export async function getAppSettings(): Promise<AppSettings> {
   const db = await getDB();
@@ -37,6 +37,9 @@ export async function getAppSettings(): Promise<AppSettings> {
 }
 
 export async function saveAppSettings(pref: Partial<AppSettings>): Promise<void> {
+  if (!pref || typeof pref !== 'object' || 'nativeEvent' in pref || 'pointerId' in pref || typeof (pref as any).preventDefault === 'function') {
+    return;
+  }
   const db = await getDB();
   const existing = await db.get('preferences', 'app_settings') as AppSettings | undefined;
   
@@ -78,7 +81,7 @@ export async function saveAppSettings(pref: Partial<AppSettings>): Promise<void>
   }
 
   await db.put('preferences', newPref);
-  syncEngine.syncAll().catch(console.error);
+  requestSync();
 }
 
 export function applyTheme(theme: string) {

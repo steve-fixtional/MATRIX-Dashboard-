@@ -28,7 +28,7 @@ export function Sidebar() {
         <span className="text-lg font-semibold tracking-wide text-neutral-900 dark:text-neutral-100 hidden lg:block">MATRIX</span>
       </div>
       
-      <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1.5">
+      <nav className="flex-1 overflow-y-auto pt-[9px] pb-6 pl-[10px] pr-[11px] flex flex-col gap-1.5">
         {NAV.map((item) => (
           <NavLink
             key={item.name}

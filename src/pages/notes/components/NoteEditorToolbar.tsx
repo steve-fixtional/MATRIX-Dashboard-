@@ -31,14 +31,14 @@ export function NoteEditorToolbar({
     <div className="flex items-center justify-between p-2 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
       <div className="flex items-center gap-1">
         {isMobile && (
-          <Button variant="ghost" size="sm" onClick={onClose} className="mr-2 md:hidden">
+          <Button variant="ghost" size="sm" onClick={() => onClose()} className="mr-2 md:hidden">
             Back
           </Button>
         )}
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onToggleFavorite}
+          onClick={() => onToggleFavorite()}
           className={note.favorite ? "text-yellow-500 hover:text-yellow-600" : "text-neutral-400"}
           title="Favorite"
         >
@@ -47,7 +47,7 @@ export function NoteEditorToolbar({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onTogglePin}
+          onClick={() => onTogglePin()}
           className={note.pinned ? "text-blue-500 hover:text-blue-600" : "text-neutral-400"}
           title="Pin"
         >
@@ -56,7 +56,7 @@ export function NoteEditorToolbar({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onToggleArchive}
+          onClick={() => onToggleArchive()}
           className={note.archived ? "text-orange-500 hover:text-orange-600" : "text-neutral-400"}
           title="Archive"
         >
@@ -68,7 +68,7 @@ export function NoteEditorToolbar({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onToggleAttach}
+          onClick={() => onToggleAttach()}
           className={`${isAttaching ? 'bg-neutral-100 dark:bg-neutral-800' : ''} text-neutral-500`}
           title="Attach Drive File"
           disabled={!isGoogleAuthed()}
@@ -78,7 +78,7 @@ export function NoteEditorToolbar({
       </div>
       
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" onClick={onDelete} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950">
+        <Button variant="ghost" size="icon" onClick={() => onDelete()} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950">
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>

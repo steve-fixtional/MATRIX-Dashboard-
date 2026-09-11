@@ -11,6 +11,8 @@
         "pinned": { "type": "boolean" },
         "archived": { "type": "boolean" },
         "favorite": { "type": "boolean" },
+        "driveFileIds": { "type": "array", "items": { "type": "string", "maxLength": 100 }, "maxLength": 50 },
+        "projectId": { "type": ["string", "null"], "maxLength": 128 },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" },
         "deletedAt": { "type": ["number", "null"] },
@@ -51,6 +53,7 @@
         "reminders": { "type": "array", "items": { "type": "number" }, "maxLength": 10 },
         "provider": { "type": "string" },
         "providerEventId": { "type": ["string", "null"], "maxLength": 256 },
+        "projectId": { "type": ["string", "null"], "maxLength": 128 },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" },
         "deletedAt": { "type": ["number", "null"] },
@@ -109,9 +112,31 @@
         "_conflicts": { "type": "array", "maxLength": 10 }
       },
       "required": ["id", "vaultVersion", "schemaVersion", "iv", "ciphertext", "createdAt", "updatedAt", "version"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A workspace grouping notes, tasks, events, and files",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "color": { "type": ["string", "null"], "maxLength": 50 },
+        "icon": { "type": ["string", "null"], "maxLength": 50 },
+        "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["name", "status", "createdAt", "updatedAt", "version"]
     }
   },
   "firestore": {
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User projects"
+    },
     "/users/{userId}/notes/{noteId}": {
       "schema": { "$ref": "#/entities/Note" },
       "description": "User notes"

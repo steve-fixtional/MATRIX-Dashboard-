@@ -66,7 +66,7 @@ export function NoteList({ notes, selectedNoteId, onSelectNote, onNewNote, searc
       <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">Notes</h2>
-          <Button size="sm" onClick={onNewNote}>
+          <Button size="sm" onClick={() => onNewNote()}>
             <Plus className="h-4 w-4 mr-1.5" /> New note
           </Button>
         </div>
@@ -127,7 +127,7 @@ export function NoteList({ notes, selectedNoteId, onSelectNote, onNewNote, searc
             </div>
             <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">It's quiet here</h3>
             <p className="text-xs text-neutral-500 mb-4 max-w-[200px]">Create your first note to capture ideas, meeting minutes, or daily journals.</p>
-            <Button size="sm" onClick={onNewNote}>
+            <Button size="sm" onClick={() => onNewNote()}>
               <Plus className="h-4 w-4 mr-1.5" /> Create note
             </Button>
           </div>

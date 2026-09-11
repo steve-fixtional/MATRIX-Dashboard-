@@ -7,13 +7,14 @@ import { RefreshCw, HardDrive, Download, Database } from 'lucide-react';
 import { getDB } from '../../services/db';
 
 export function SyncSettings() {
-  const { syncStatus, lastSyncedAt, pendingCount, requestSync, isOnline } = useSyncState();
+  const { syncStatus, lastSyncedAt, pendingCount, requestSync, isOnline, error } = useSyncState();
   const [exporting, setExporting] = useState(false);
 
   const getStatusColor = () => {
     if (!isOnline) return 'text-neutral-500';
     if (syncStatus === 'syncing') return 'text-blue-500';
-    if (syncStatus === 'error') return 'text-red-500';
+    if (syncStatus === 'sync_failed') return 'text-red-500';
+    if (syncStatus === 'auth_required') return 'text-amber-500';
     if (pendingCount > 0) return 'text-amber-500';
     return 'text-green-500';
   };
@@ -21,7 +22,8 @@ export function SyncSettings() {
   const getStatusText = () => {
     if (!isOnline) return 'Offline';
     if (syncStatus === 'syncing') return 'Syncing...';
-    if (syncStatus === 'error') return 'Sync Error';
+    if (syncStatus === 'sync_failed') return 'Sync Error';
+    if (syncStatus === 'auth_required') return 'Sign In Required';
     if (pendingCount > 0) return `${pendingCount} pending changes`;
     return 'Synchronized';
   };
@@ -32,7 +34,7 @@ export function SyncSettings() {
       const db = await getDB();
       const exportData: Record<string, any> = {};
       
-      const stores = ['notes', 'tasks', 'events', 'clipboard', 'preferences'];
+      const stores = ['projects', 'notes', 'tasks', 'events', 'clipboard', 'preferences'];
       
       for (const storeName of stores) {
         exportData[storeName] = await db.getAll(storeName as any);
@@ -90,6 +92,14 @@ export function SyncSettings() {
               Sync Now
             </Button>
           </div>
+          {error && (
+            <div className="mt-3 p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300">
+              <span className="font-semibold">Sync notice:</span> {error.message}
+              <div className="mt-1 text-neutral-500 dark:text-neutral-400">
+                Your local data is fully preserved and accessible in offline storage. Click &quot;Sync Now&quot; to retry anytime.
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

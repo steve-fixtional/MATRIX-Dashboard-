@@ -1,6 +1,6 @@
 import { Repository } from './repository';
 import { ClipboardItem } from '../domain/types';
-import { syncEngine } from './sync';
+import { requestSync } from './sync';
 
 const clipboardRepo = new Repository('clipboard');
 
@@ -25,7 +25,7 @@ export async function saveClipboardItem(data: Omit<ClipboardItem, 'id' | 'create
     item = await clipboardRepo.create(data);
   }
   if (isClipboardSyncEnabled()) {
-    syncEngine.syncAll().catch(console.error);
+    requestSync();
   }
   return item;
 }
@@ -33,7 +33,7 @@ export async function saveClipboardItem(data: Omit<ClipboardItem, 'id' | 'create
 export async function deleteClipboardItem(id: string): Promise<void> {
   await clipboardRepo.delete(id);
   if (isClipboardSyncEnabled()) {
-    syncEngine.syncAll().catch(console.error);
+    requestSync();
   }
 }
 
@@ -53,7 +53,7 @@ export function isClipboardSyncEnabled(): boolean {
 export function setClipboardSyncEnabled(enabled: boolean): void {
   localStorage.setItem('matrix_sync_clipboard', enabled ? 'true' : 'false');
   if (enabled) {
-    syncEngine.syncAll().catch(console.error);
+    requestSync();
   }
 }
 

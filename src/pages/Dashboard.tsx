@@ -7,7 +7,6 @@ import { TasksWidget } from '../components/dashboard/TasksWidget';
 import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { QuickNoteWidget } from '../components/dashboard/QuickNoteWidget';
 import { RecentNotesWidget } from '../components/dashboard/RecentNotesWidget';
-import { SyncIndicator } from '../components/ui/SyncIndicator';
 import { OnboardingBanner } from '../components/ui/OnboardingBanner';
 import { getDashboardPreferences, migrateLegacyLayout, mergeLayoutWithPreferences } from '../services/dashboardService';
 import { useSyncState } from '../store/SyncContext';
@@ -48,16 +47,6 @@ export function Dashboard() {
 
   return (
     <PageWrapper className="space-y-6 sm:space-y-8">
-      <div className="flex flex-row items-center justify-between px-1">
-        <div className="flex flex-col gap-1">
-          {/* We embed the clock widget cleanly within the layout grid instead of as a header, 
-              but we could provide a specific header area. We'll leave the sync indicator here. */}
-          <div className="flex items-center gap-4">
-             <SyncIndicator />
-          </div>
-        </div>
-      </div>
-
       <OnboardingBanner />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-min">

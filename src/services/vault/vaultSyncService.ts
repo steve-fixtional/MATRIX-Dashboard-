@@ -13,7 +13,7 @@
  * - No server-side decryption endpoints, backend password verifiers, or recovery keys.
  */
 
-import { collection, doc, getDoc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocFromServer, getDocs, getDocsFromServer, query, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getDB } from '../db';
 import {
@@ -32,6 +32,7 @@ import {
   getStoredVaultMeta,
 } from './vaultStorageService';
 import { base64ToBytes } from './crypto';
+import { withTimeout } from '../../utils';
 
 export type VaultSyncState =
   | 'synced'
@@ -318,10 +319,10 @@ export class VaultSyncEngine {
       this.baseDelay = 1000;
       return { success: true, pushed: pushedCount, pulled: pulledCount, conflicts: conflictCount };
     } catch (error: any) {
-      console.error('[VaultSync] Synchronization failed:', error);
+      console.warn('[VaultSync] Synchronization notice:', error?.message || error);
       const err = error instanceof Error ? error : new Error(String(error));
       this.notify('sync_failed', err);
-      this.scheduleRetry();
+      // Let main SyncEngine handle retries rather than spawning duplicate retry loops
       return { success: false, pushed: pushedCount, pulled: pulledCount, conflicts: conflictCount, error: err };
     } finally {
       this.isSyncing = false;
@@ -336,7 +337,11 @@ export class VaultSyncEngine {
     const localMeta = await localDb.get('vaultMeta', PRIMARY_VAULT_META_ID);
 
     const remoteMetaDocRef = doc(db, `users/${userId}/vault_meta/${PRIMARY_VAULT_META_ID}`);
-    const remoteSnap = await getDoc(remoteMetaDocRef);
+    const remoteSnap = await withTimeout(
+      getDocFromServer(remoteMetaDocRef),
+      8000,
+      'Fetching vault configuration'
+    );
     const remoteData = remoteSnap.data();
 
     // Case 1: Remote exists, validate zero-knowledge & structure
@@ -372,7 +377,11 @@ export class VaultSyncEngine {
       assertZeroKnowledgeMeta(localMeta);
 
       const { syncStatus, syncError, ...cleanPayload } = localMeta as any;
-      await setDoc(remoteMetaDocRef, cleanPayload);
+      await withTimeout(
+        setDoc(remoteMetaDocRef, cleanPayload),
+        8000,
+        'Uploading vault configuration'
+      );
 
       localMeta.syncStatus = 'synchronized';
       localMeta.syncError = undefined;
@@ -395,7 +404,11 @@ export class VaultSyncEngine {
 
     const remoteCollectionRef = collection(db, `users/${userId}/vault_items`);
     const q = query(remoteCollectionRef, where('updatedAt', '>', lastSyncedAt));
-    const remoteSnapshot = await getDocs(q);
+    const remoteSnapshot = await withTimeout(
+      getDocsFromServer(q),
+      8000,
+      'Fetching remote vault items'
+    );
 
     const remoteRecords: any[] = [];
     remoteSnapshot.forEach((docSnap) => {
@@ -497,7 +510,7 @@ export class VaultSyncEngine {
       }
 
       try {
-        await batch.commit();
+        await withTimeout(batch.commit(), 10000, 'Uploading vault records');
 
         // Mark pushed records as synchronized
         const updateTx = localDb.transaction('vaultItems', 'readwrite');

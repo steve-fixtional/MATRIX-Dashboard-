@@ -47,7 +47,7 @@ export function Projects() {
     <PageWrapper className="flex flex-col h-full max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between p-4 sm:p-6 shrink-0 border-b border-neutral-100 dark:border-neutral-800">
         <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">Projects</h1>
-        <Button size="sm" onClick={handleCreateProject}>
+        <Button size="sm" onClick={() => handleCreateProject()}>
           <Plus className="h-4 w-4 mr-1.5" /> New Project
         </Button>
       </div>
@@ -63,7 +63,7 @@ export function Projects() {
               icon={FolderKanban}
               title="Your Command Center"
               description="Projects group your notes, tasks, events, and files into unified workspaces. Data is stored securely on your device."
-              action={<Button onClick={handleCreateProject}>Create first project</Button>}
+              action={<Button onClick={() => handleCreateProject()}>Create first project</Button>}
             />
           </div>
         ) : (

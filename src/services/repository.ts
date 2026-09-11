@@ -5,6 +5,42 @@ export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'projects' 
 
 export type EntityFor<K extends StoreName> = MatrixDB[K]['value'] & BaseEntity;
 
+function isEventLike(val: any): boolean {
+  if (!val || typeof val !== 'object') return false;
+  if (typeof Event !== 'undefined' && val instanceof Event) return true;
+  if ('nativeEvent' in val || 'pointerId' in val) return true;
+  if (typeof val.preventDefault === 'function' && typeof val.stopPropagation === 'function') return true;
+  return false;
+}
+
+function sanitizeForStorage<T>(item: T): T {
+  if (!item || typeof item !== 'object') return item;
+  const result: any = Array.isArray(item) ? [] : {};
+  for (const [key, value] of Object.entries(item)) {
+    if (value !== null && typeof value === 'object') {
+      if (isEventLike(value)) {
+        result[key] = null;
+        continue;
+      }
+      if (value instanceof Date) {
+        result[key] = value.getTime();
+      } else if (Array.isArray(value)) {
+        result[key] = value.map(v => (isEventLike(v) ? null : sanitizeForStorage(v)));
+      } else {
+        result[key] = sanitizeForStorage(value);
+      }
+    } else if (typeof value === 'function') {
+      continue;
+    } else {
+      result[key] = value;
+    }
+  }
+  if ('projectId' in result && typeof result.projectId !== 'string' && result.projectId !== null) {
+    result.projectId = null;
+  }
+  return result;
+}
+
 export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<K>> {
   constructor(private storeName: K) {}
 
@@ -13,7 +49,7 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     const now = Date.now();
     const id = data.id || crypto.randomUUID();
     
-    const entity = {
+    const entity = sanitizeForStorage({
       ...data,
       id,
       createdAt: now,
@@ -21,7 +57,7 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
       version: 1,
       deletedAt: null,
       syncStatus: 'pending_create' as SyncStatus,
-    } as T;
+    }) as T;
 
     await db.put(this.storeName, entity);
     return entity;
@@ -43,13 +79,13 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     // If it was already pending_create, keep it pending_create. Otherwise pending_update.
     const newSyncStatus = existing.syncStatus === 'pending_create' ? 'pending_create' : 'pending_update';
 
-    const entity = {
+    const entity = sanitizeForStorage({
       ...existing,
       ...data,
       updatedAt: now,
       version: existing.version + 1,
       syncStatus: newSyncStatus,
-    } as T;
+    }) as T;
 
     await db.put(this.storeName, entity);
     return entity;
@@ -63,13 +99,13 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     const now = Date.now();
     const newSyncStatus = existing.syncStatus === 'pending_create' ? 'synchronized' : 'pending_delete';
     
-    const deletedEntity = {
+    const deletedEntity = sanitizeForStorage({
       ...existing,
       updatedAt: now,
       deletedAt: now,
       version: existing.version + 1,
       syncStatus: newSyncStatus,
-    } as T;
+    }) as T;
 
     // If it was pending_create and we delete it, we could actually physically delete it or mark it synchronized and deleted.
     // We'll keep it soft deleted but mark it 'synchronized' or just physically delete it if we don't want to sync it.

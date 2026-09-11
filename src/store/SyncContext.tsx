@@ -41,7 +41,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     const handleStateChange = (state: SyncStateString, err?: Error) => {
       setSyncStatus(state);
-      if (err) setError(err);
+      if (err) {
+        setError(err);
+      } else if (state === 'synced') {
+        setError(null);
+      }
       
       // Update pending count and lastSyncedAt
       syncEngine.getPendingCount().then(setPendingCount).catch(console.error);
@@ -64,12 +68,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user && isOnline) {
-      syncEngine.syncAll();
+      syncEngine.syncAll().catch(err => {
+        console.warn('[SyncContext] Background sync notice:', err?.message || err);
+      });
     }
   }, [user, isOnline]);
 
   const requestSync = useCallback(() => {
-    syncEngine.syncAll().catch(console.error);
+    setError(null);
+    syncEngine.resetRetryBackoff();
+    syncEngine.syncAll().catch(err => {
+      console.warn('[SyncContext] Manual sync notice:', err?.message || err);
+    });
   }, []);
 
   const value = useMemo(() => ({

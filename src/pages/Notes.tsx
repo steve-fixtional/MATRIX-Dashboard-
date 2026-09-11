@@ -41,8 +41,10 @@ export function Notes() {
     }
   }, []);
 
-  const handleNewNote = async (overrideProjectId?: string | null) => {
-    const pId = overrideProjectId !== undefined ? overrideProjectId : projectId;
+  const handleNewNote = async (overrideProjectId?: unknown) => {
+    const pId = typeof overrideProjectId === 'string'
+      ? overrideProjectId
+      : (overrideProjectId === null ? null : (typeof projectId === 'string' ? projectId : null));
     const newNote = await saveNote({
       title: '',
       content: '',
@@ -95,7 +97,7 @@ export function Notes() {
             notes={filteredNotes} 
             selectedNoteId={selectedNoteId} 
             onSelectNote={setSelectedNoteId}
-            onNewNote={handleNewNote}
+            onNewNote={() => handleNewNote()}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />

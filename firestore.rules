@@ -11,6 +11,20 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
+    function isValidProject(data) {
+      return data.keys().hasAll(['name', 'status', 'createdAt', 'updatedAt', 'version'])
+          && data.name is string && data.name.size() <= 200
+          && (data.get('description', null) == null || (data.description is string && data.description.size() <= 2000))
+          && (data.get('color', null) == null || (data.color is string && data.color.size() <= 50))
+          && (data.get('icon', null) == null || (data.icon is string && data.icon.size() <= 50))
+          && data.status in ['active', 'completed', 'archived']
+          && data.createdAt is number
+          && data.updatedAt is number
+          && data.version is number
+          && (data.get('deletedAt', null) == null || data.deletedAt is number)
+          && (data.get('_conflicts', null) == null || (data._conflicts is list && data._conflicts.size() <= 10));
+    }
+
     function isValidNote(data) {
       return data.keys().hasAll(['title', 'content', 'tags', 'pinned', 'archived', 'favorite', 'createdAt', 'updatedAt', 'version'])
           && data.title is string && data.title.size() <= 200
@@ -20,6 +34,7 @@ service cloud.firestore {
           && data.archived is bool
           && data.favorite is bool
           && (data.get('driveFileIds', null) == null || (data.driveFileIds is list && data.driveFileIds.size() <= 50))
+          && (data.get('projectId', null) == null || (data.projectId is string && data.projectId.size() <= 128))
           && data.createdAt is number
           && data.updatedAt is number
           && data.version is number
@@ -57,6 +72,7 @@ service cloud.firestore {
           && data.reminders is list && data.reminders.size() <= 10
           && data.provider in ['local', 'google']
           && (data.get('providerEventId', null) == null || (data.providerEventId is string && data.providerEventId.size() <= 256))
+          && (data.get('projectId', null) == null || (data.projectId is string && data.projectId.size() <= 128))
           && data.createdAt is number
           && data.updatedAt is number
           && data.version is number
@@ -71,6 +87,7 @@ service cloud.firestore {
           && data.pinned is bool
           && data.favorite is bool
           && (data.get('source', null) == null || (data.source is string && data.source.size() <= 200))
+          && (data.get('projectId', null) == null || (data.projectId is string && data.projectId.size() <= 128))
           && data.createdAt is number
           && data.updatedAt is number
           && data.version is number
@@ -140,18 +157,34 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      match /projects/{projectId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(projectId)
+                      && isValidProject(incoming())
+                      && incoming().keys().size() <= 14;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(projectId)
+                      && isValidProject(incoming())
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'color', 'icon', 'status', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
       match /notes/{noteId} {
         allow read: if isSignedIn() && request.auth.uid == userId;
         allow create: if isSignedIn() 
                       && request.auth.uid == userId
                       && isValidId(noteId)
                       && isValidNote(incoming())
-                      && incoming().keys().size() <= 13;
+                      && incoming().keys().size() <= 15;
         allow update: if isSignedIn() 
                       && request.auth.uid == userId
                       && isValidId(noteId)
                       && isValidNote(incoming())
-                      && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'tags', 'pinned', 'archived', 'favorite', 'driveFileIds', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'tags', 'pinned', 'archived', 'favorite', 'driveFileIds', 'projectId', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
                       && incoming().createdAt == existing().createdAt;
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
@@ -178,12 +211,12 @@ service cloud.firestore {
                       && request.auth.uid == userId
                       && isValidId(eventId)
                       && isValidEvent(incoming())
-                      && incoming().keys().size() <= 15;
+                      && incoming().keys().size() <= 17;
         allow update: if isSignedIn() 
                       && request.auth.uid == userId
                       && isValidId(eventId)
                       && isValidEvent(incoming())
-                      && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'startTime', 'endTime', 'allDay', 'location', 'recurrenceRule', 'reminders', 'providerEventId', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'startTime', 'endTime', 'allDay', 'location', 'recurrenceRule', 'reminders', 'providerEventId', 'projectId', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
                       && incoming().createdAt == existing().createdAt;
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
@@ -194,12 +227,12 @@ service cloud.firestore {
                       && request.auth.uid == userId
                       && isValidId(clipboardId)
                       && isValidClipboard(incoming())
-                      && incoming().keys().size() <= 10;
+                      && incoming().keys().size() <= 12;
         allow update: if isSignedIn() 
                       && request.auth.uid == userId
                       && isValidId(clipboardId)
                       && isValidClipboard(incoming())
-                      && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'contentType', 'pinned', 'favorite', 'source', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'contentType', 'pinned', 'favorite', 'source', 'projectId', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
                       && incoming().createdAt == existing().createdAt;
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }

@@ -1,9 +1,10 @@
 import { getDB } from './db';
 import { db, auth } from './firebase';
-import { collection, doc, getDocs, setDoc, query, where, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where, writeBatch, deleteDoc, getDocFromServer, getDocsFromServer } from 'firebase/firestore';
 import { BaseEntity } from '../domain/types';
 import { isClipboardSyncEnabled } from './clipboardService';
 import { vaultSyncEngine } from './vault/vaultSyncService';
+import { withTimeout } from '../utils';
 
 type CollectionName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'preferences' | 'projects';
 
@@ -13,14 +14,23 @@ export class SyncEngine {
   private isSyncing = false;
   public onSyncStateChange?: (state: SyncStateString, error?: Error) => void;
   private retryTimeout: number | null = null;
-  private baseDelay = 1000;
+  private baseDelay = 2000;
+  private retryCount = 0;
+  private readonly maxRetries = 2;
 
   constructor(onSyncStateChange?: (state: SyncStateString, error?: Error) => void) {
     this.onSyncStateChange = onSyncStateChange;
-    window.addEventListener('online', () => {
-      this.baseDelay = 1000;
-      this.syncAll();
-    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.resetRetryBackoff();
+        this.syncAll();
+      });
+    }
+  }
+
+  public resetRetryBackoff() {
+    this.retryCount = 0;
+    this.baseDelay = 2000;
   }
 
   private notify(state: SyncStateString, error?: Error) {
@@ -30,7 +40,9 @@ export class SyncEngine {
   }
 
   private scheduleRetry() {
+    if (typeof window === 'undefined') return;
     if (this.retryTimeout) clearTimeout(this.retryTimeout);
+    this.retryCount++;
     this.retryTimeout = window.setTimeout(() => {
       this.syncAll();
     }, this.baseDelay);
@@ -78,6 +90,39 @@ export class SyncEngine {
     return maxTime === 0 ? null : maxTime;
   }
 
+  private async probeCloudConnection(userId: string): Promise<boolean> {
+    try {
+      const probeDoc = doc(db, `users/${userId}/syncMeta/probe`);
+      // A quick 2500ms server probe to verify backend availability
+      await withTimeout(getDocFromServer(probeDoc), 2500, 'Cloud connection probe');
+      return true;
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const code = err?.code || '';
+      // If the document does not exist, the server responded successfully
+      if (code === 'not-found' || msg.includes('not found')) {
+        return true;
+      }
+      // If offline, unavailable, permission denied due to disabled API, or client unreachable
+      if (
+        code === 'unavailable' ||
+        code === 'failed-precondition' ||
+        msg.includes('offline') ||
+        msg.includes('unavailable') ||
+        msg.includes('Cloud Firestore API') ||
+        msg.includes('the client is offline') ||
+        msg.includes('timed out')
+      ) {
+        return false;
+      }
+      // Standard auth/rules permission denial means server is reachable
+      if (code === 'permission-denied' && !msg.includes('Cloud Firestore API')) {
+        return true;
+      }
+      return false;
+    }
+  }
+
   async syncAll() {
     if (this.isSyncing) return;
     const user = auth.currentUser;
@@ -85,7 +130,7 @@ export class SyncEngine {
       this.notify('auth_required');
       return; 
     }
-    if (!navigator.onLine) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.notify('offline');
       return;
     }
@@ -94,16 +139,15 @@ export class SyncEngine {
     this.notify('syncing');
 
     try {
-      await this.syncCollection('projects');
-      await this.syncCollection('notes');
-      await this.syncCollection('tasks');
-      await this.syncCollection('events');
-      await this.syncCollection('preferences');
-      if (isClipboardSyncEnabled()) {
-        await this.syncCollection('clipboard');
+      // Fast probe to ensure Cloud Firestore backend is reachable before starting collection sync
+      const isReachable = await this.probeCloudConnection(user.uid);
+      if (!isReachable) {
+        this.notify('offline');
+        return;
       }
-      // Synchronize encrypted password vault
-      await vaultSyncEngine.sync();
+
+      // 25-second overall timeout bounds the full synchronization loop
+      await withTimeout(this.executeSync(), 25000, 'Cloud Synchronization');
       
       const remainingPending = await this.getPendingCount();
       if (remainingPending > 0) {
@@ -112,14 +156,55 @@ export class SyncEngine {
         this.notify('synced');
       }
       
-      this.baseDelay = 1000; // Reset backoff on success
+      this.baseDelay = 2000; // Reset backoff on success
+      this.retryCount = 0;
     } catch (error: any) {
-      console.error('Sync error:', error);
-      this.notify('sync_failed', error instanceof Error ? error : new Error(String(error)));
-      this.scheduleRetry();
+      const err = error instanceof Error ? error : new Error(String(error));
+      const msg = err.message || '';
+
+      // If error indicates offline or unavailable, notify offline gracefully
+      if (
+        msg.includes('offline') || 
+        msg.includes('unavailable') || 
+        msg.includes('Cloud Firestore API') ||
+        msg.includes('the client is offline')
+      ) {
+        this.notify('offline');
+      } else {
+        console.warn('[SyncEngine] Sync not completed:', msg);
+        this.notify('sync_failed', err);
+      }
+
+      const isPermanent = 
+        msg.includes('permission-denied') || 
+        msg.includes('PERMISSION_DENIED') || 
+        msg.includes('Missing or insufficient permissions') ||
+        msg.includes('Cloud Firestore API has not been used') ||
+        msg.includes('offline') ||
+        msg.includes('unavailable') ||
+        msg.includes('unauthenticated');
+
+      if (!isPermanent && this.retryCount < this.maxRetries) {
+        this.scheduleRetry();
+      } else {
+        console.warn('[SyncEngine] Halting auto-retry loop for permanent error or retry limit:', msg);
+      }
     } finally {
       this.isSyncing = false;
     }
+  }
+
+  private async executeSync(): Promise<void> {
+    await this.syncCollection('projects');
+    await this.syncCollection('notes');
+    await this.syncCollection('tasks');
+    await this.syncCollection('events');
+    await this.syncCollection('preferences');
+    if (isClipboardSyncEnabled()) {
+      await this.syncCollection('clipboard');
+    }
+    // Synchronize encrypted password vault
+    await vaultSyncEngine.sync();
   }
 
   private async syncCollection(collectionName: CollectionName) {
@@ -132,10 +217,14 @@ export class SyncEngine {
     const syncMeta = await localDb.get('syncMeta', collectionName);
     const lastSyncedAt = syncMeta?.lastSyncedAt || 0;
 
-    // 2. Fetch remote changes since last sync
+    // 2. Fetch remote changes since last sync with 8s timeout
     const remoteRef = collection(db, `users/${userId}/${collectionName}`);
     const q = query(remoteRef, where('updatedAt', '>', lastSyncedAt));
-    const remoteSnapshot = await getDocs(q);
+    const remoteSnapshot = await withTimeout(
+      getDocsFromServer(q), 
+      8000, 
+      `Fetching remote ${collectionName}`
+    );
     
     const remoteChanges: BaseEntity[] = [];
     remoteSnapshot.forEach(docSnap => {
@@ -214,10 +303,10 @@ export class SyncEngine {
         batch.set(docRef, remoteObj);
       }
       
-      // Await network commit. If this fails, the error propagates up, the loop aborts,
+      // Await network commit with 10s timeout. If this fails, the error propagates up, the loop aborts,
       // and subsequent chunks are NOT processed. Failed chunks remain in 'pending_*' state.
       try {
-        await batch.commit();
+        await withTimeout(batch.commit(), 10000, `Uploading ${collectionName}`);
         
         // After successful remote write, update local DB to 'synchronized'
         // We use a fresh transaction since the original one is closed
@@ -254,6 +343,11 @@ export class SyncEngine {
 
 export const syncEngine = new SyncEngine();
 
-export function requestSync() {
-  syncEngine.syncAll().catch(console.error);
+export function requestSync(resetRetries = true) {
+  if (resetRetries) {
+    syncEngine.resetRetryBackoff();
+  }
+  syncEngine.syncAll().catch(err => {
+    console.warn('[Sync] Request sync notice:', err);
+  });
 }
