@@ -4,14 +4,19 @@ import { WidgetLayout } from '../domain/dashboardTypes';
 import { syncEngine } from './sync';
 
 export async function getDashboardPreferences(): Promise<DashboardPreference | null> {
-  const db = await getDB();
-  const pref = await db.get('preferences', 'dashboard');
-  return pref || null;
+  const localStr = localStorage.getItem('matrix_dashboard_pref');
+  if (localStr) {
+    try {
+      return JSON.parse(localStr) as DashboardPreference;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return null;
 }
 
 export async function saveDashboardPreferences(pref: Partial<DashboardPreference>): Promise<void> {
-  const db = await getDB();
-  const existing = await db.get('preferences', 'dashboard');
+  const existing = await getDashboardPreferences();
   
   const now = Date.now();
   const newPref: DashboardPreference = {
@@ -20,43 +25,21 @@ export async function saveDashboardPreferences(pref: Partial<DashboardPreference
     updatedAt: now,
     deletedAt: null,
     version: (existing?.version || 0) + 1,
-    syncStatus: 'pending_update',
+    syncStatus: 'synchronized',
     widgetVisibility: existing?.widgetVisibility || {},
     widgetOrder: existing?.widgetOrder || {},
     ...pref,
   };
   
-  if (!existing) {
-    newPref.syncStatus = 'pending_create';
-  }
-
-  await db.put('preferences', newPref);
-  syncEngine.syncAll().catch(console.error);
+  localStorage.setItem('matrix_dashboard_pref', JSON.stringify(newPref));
 }
 
 export async function migrateLegacyLayout(): Promise<void> {
-  const legacyStr = localStorage.getItem('matrix_dashboard_layout');
-  if (legacyStr) {
-    try {
-      const parsed = JSON.parse(legacyStr) as WidgetLayout[];
-      const visibility: Record<string, boolean> = {};
-      const order: Record<string, number> = {};
-      
-      parsed.forEach(w => {
-        visibility[w.id] = w.visible;
-        order[w.id] = w.order;
-      });
-
-      await saveDashboardPreferences({
-        widgetVisibility: visibility,
-        widgetOrder: order,
-      });
-
-      // Remove after successful migration
-      localStorage.removeItem('matrix_dashboard_layout');
-    } catch (err) {
-      console.error('Failed to migrate legacy layout', err);
-    }
+  // Legacy migration no longer pushes to IDB, but we might want to migrate from IDB back to local
+  const db = await getDB();
+  const pref = await db.get('preferences', 'dashboard');
+  if (pref && !localStorage.getItem('matrix_dashboard_pref')) {
+    localStorage.setItem('matrix_dashboard_pref', JSON.stringify(pref));
   }
 }
 

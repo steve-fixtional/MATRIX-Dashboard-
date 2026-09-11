@@ -1,7 +1,7 @@
 import { getDB, MatrixDB } from './db';
 import { BaseEntity, SyncStatus } from '../domain/types';
 
-export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard';
+export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'projects' | 'files';
 
 export type EntityFor<K extends StoreName> = MatrixDB[K]['value'] & BaseEntity;
 
@@ -110,5 +110,20 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
   async queryBySyncStatus(status: SyncStatus): Promise<T[]> {
     const db = await getDB();
     return (await db.getAllFromIndex(this.storeName, 'by-syncStatus' as any, status as any)) as T[];
+  }
+
+  async queryByProjectId(projectId: string, includeDeleted = false): Promise<T[]> {
+    const db = await getDB();
+    // Use the index if it exists (all stores except projects and preferences have it)
+    if (db.transaction(this.storeName).objectStore(this.storeName).indexNames.contains('by-projectId' as any)) {
+       let all = (await db.getAllFromIndex(this.storeName, 'by-projectId' as any, projectId as any)) as T[];
+       if (!includeDeleted) {
+          all = all.filter(e => !e.deletedAt);
+       }
+       return all.sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+    // Fallback if index doesn't exist (e.g. older schema version or not added)
+    let all = await this.list(includeDeleted);
+    return all.filter(e => (e as any).projectId === projectId);
   }
 }

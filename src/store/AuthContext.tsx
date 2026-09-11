@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { vaultRuntimeService } from '../services/vault/vaultRuntimeService';
 
 interface AuthContextType {
   user: User | null;
@@ -50,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsSigningOut(true);
       setError(null);
+      // Immediately lock vault, clear runtime secrets and isolated user cache
+      await vaultRuntimeService.handleLogout();
       await signOut(auth);
     } catch (err: any) {
       setError(err);

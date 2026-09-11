@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
-import { syncEngine } from '../services/sync';
+import { syncEngine, SyncStateString } from '../services/sync';
 import { useAuth } from './AuthContext';
 
 interface SyncContextType {
   isOnline: boolean;
-  syncStatus: 'synced' | 'syncing' | 'offline' | 'error' | 'idle';
+  syncStatus: SyncStateString | 'idle';
   pendingCount: number;
   lastSyncedAt: number | null;
   error: Error | null;
@@ -17,7 +17,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error' | 'idle'>('idle');
+  const [syncStatus, setSyncStatus] = useState<SyncStateString | 'idle'>('idle');
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -39,7 +39,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     // Save existing listener to restore if needed
     const prevListener = syncEngine.onSyncStateChange;
 
-    const handleStateChange = (state: 'synced' | 'syncing' | 'offline' | 'error', err?: Error) => {
+    const handleStateChange = (state: SyncStateString, err?: Error) => {
       setSyncStatus(state);
       if (err) setError(err);
       

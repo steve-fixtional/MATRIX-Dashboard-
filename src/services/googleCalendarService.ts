@@ -44,25 +44,36 @@ export function isGoogleAuthed(): boolean {
   return !!cachedAccessToken;
 }
 
+let isInitialized = false;
+let initPromise: Promise<void> | null = null;
+let unsubscribeAuth: (() => void) | null = null;
+
 export async function initGoogleCalendarAuth(): Promise<void> {
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, (user: User | null) => {
-      if (user) {
-        // Unfortunately, Firebase's onAuthStateChanged doesn't natively give us back the access token
-        // if it was loaded from IndexedDB on a page refresh. We only get it directly from signInWithPopup.
-        // However, for this preview environment, we can rely on the user having to re-click "Sign in" if the token is lost,
-        // or we can silently sign them in if they are already authenticated.
-        
-        // Wait for token to be available if not already, or just set authed if we have user
-        // Note: For full persistence of OAuth tokens, you'd usually store it securely or re-auth silently.
-        // For now, if we have a user but no token, we might need them to re-auth, but let's notify anyway.
-      } else {
+  if (isInitialized) return Promise.resolve();
+  if (initPromise) return initPromise;
+  
+  initPromise = new Promise((resolve) => {
+    unsubscribeAuth = onAuthStateChanged(auth, (user: User | null) => {
+      if (!user) {
         cachedAccessToken = null;
         notifyAuthChange(false);
       }
-      resolve();
+      if (!isInitialized) {
+        isInitialized = true;
+        resolve();
+      }
     });
   });
+  return initPromise;
+}
+
+export function cleanupGoogleCalendarAuth() {
+  if (unsubscribeAuth) {
+    unsubscribeAuth();
+    unsubscribeAuth = null;
+  }
+  isInitialized = false;
+  initPromise = null;
 }
 
 export async function loginGoogle() {
@@ -166,15 +177,28 @@ export async function getGoogleEvents(calendarIds: string[], start: number, end:
     
     const results = await Promise.allSettled(promises);
     const events: CalendarEvent[] = [];
+    let hasError = false;
+    let lastError: any = null;
+
     results.forEach(result => {
       if (result.status === 'fulfilled') {
         events.push(...result.value);
+      } else {
+        hasError = true;
+        lastError = result.reason;
+        console.error('Google Calendar fetch error:', result.reason);
       }
     });
+
+    if (hasError && events.length === 0) {
+      // Only completely fail if NO events were retrieved. Otherwise, partial load.
+      throw lastError;
+    }
+    
     return events;
   } catch (err) {
     console.error('Error fetching Google events', err);
-    return [];
+    throw err;
   }
 }
 

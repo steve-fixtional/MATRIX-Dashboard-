@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, FileText, Calendar, Search } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, FileText, Calendar, Search, FolderKanban } from 'lucide-react';
 import { cn } from '../../utils';
 
 const MOBILE_NAV = [
   { name: 'Home', to: '/', icon: LayoutDashboard },
+  { name: 'Projects', to: '/projects', icon: FolderKanban },
   { name: 'Notes', to: '/notes', icon: FileText },
   { name: 'Tasks', to: '/tasks', icon: CheckSquare },
   { name: 'Calendar', to: '/calendar', icon: Calendar },

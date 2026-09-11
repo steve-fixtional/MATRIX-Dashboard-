@@ -11,6 +11,7 @@ export function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     const loadedNotes = await getNotes();
@@ -24,8 +25,11 @@ export function Notes() {
   // Check URL params for "new" trigger or "id" selection
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const pid = params.get('projectId');
+    if (pid) setProjectId(pid);
+
     if (params.get('new') === 'true') {
-      handleNewNote();
+      handleNewNote(pid);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
@@ -37,14 +41,16 @@ export function Notes() {
     }
   }, []);
 
-  const handleNewNote = async () => {
+  const handleNewNote = async (overrideProjectId?: string | null) => {
+    const pId = overrideProjectId !== undefined ? overrideProjectId : projectId;
     const newNote = await saveNote({
       title: '',
       content: '',
       tags: [],
       pinned: false,
       archived: false,
-      favorite: false
+      favorite: false,
+      projectId: pId
     });
     setNotes(prev => [newNote, ...prev]);
     setSelectedNoteId(newNote.id);
@@ -111,8 +117,8 @@ export function Notes() {
             <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-neutral-50/50 dark:bg-neutral-900/20">
               <EmptyState 
                 icon={FileText} 
-                title="No note selected" 
-                description="Select a note from the list, or create a new one to start writing."
+                title="Your Digital Notebook" 
+                description="Select a note from the list, or create a new one. Notes are securely stored on your device and will sync automatically when connected to the cloud."
               />
             </div>
           )}

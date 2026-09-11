@@ -1,21 +1,32 @@
+import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Layers, Calendar } from 'lucide-react';
 import { useAuth } from '../../store/AuthContext';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../../services/firebase';
+import { initGoogleCalendarAuth, loginGoogle, subscribeToGoogleAuth } from '../../services/googleCalendarService';
 
 export function IntegrationSettings() {
   const { user } = useAuth();
+  const [isGoogleConnected, setIsGoogleConnected] = useState(
+    user?.providerData.some(p => p.providerId === 'google.com') ?? false
+  );
   
-  // Checking if they have google provider connected.
-  const isGoogleConnected = user?.providerData.some(p => p.providerId === 'google.com');
+  useEffect(() => {
+    initGoogleCalendarAuth().catch(console.error);
+    
+    const unsubscribe = subscribeToGoogleAuth((isAuthed) => {
+      // It's possible the user is connected via Firebase Auth but we don't have the token.
+      // We rely on the firebase providerData as the source of truth for "connected".
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   const connectGoogle = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      // Add necessary scopes if needed for calendar/drive here, though ideally it's handled via Google Identity Services
-      await signInWithPopup(auth, provider);
+      await loginGoogle();
+      // Ensure local state updates if user's providerData takes a moment
+      setIsGoogleConnected(true);
     } catch (e) {
       console.error(e);
     }
@@ -43,7 +54,7 @@ export function IntegrationSettings() {
                 <div>
                   <div className="font-medium text-neutral-900 dark:text-neutral-100">Google Account</div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {isGoogleConnected ? 'Connected' : 'Not connected'}
+                    {isGoogleConnected ? 'Connected. This grants access to your calendar if requested.' : 'Not connected. Connect to unlock cloud integrations.'}
                   </div>
                 </div>
               </div>
@@ -63,7 +74,7 @@ export function IntegrationSettings() {
                 <div>
                   <div className="font-medium text-neutral-900 dark:text-neutral-100">Google Calendar</div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Sync events and schedules
+                    Required to display your schedule in the MATRIX calendar.
                   </div>
                 </div>
               </div>

@@ -72,7 +72,7 @@ export default defineConfig(() => {
       tailwindcss(),
       aistudioMediaPlugin(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',

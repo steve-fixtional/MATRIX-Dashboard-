@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Task, TaskPriority } from '../../domain/types';
 import { CheckSquare, Square, Calendar, Flag, MoreVertical, Trash2 } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast, isThisYear } from 'date-fns';
+import { FileAttachments } from '../../components/ui/FileAttachments';
+import { ItemSyncStatus } from '../../components/ui/ItemSyncStatus';
 
 interface TaskItemProps {
   key?: React.Key | string | number;
@@ -126,6 +128,16 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
                 {task.notes}
               </span>
             )}
+          </div>
+        )}
+        
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <ItemSyncStatus item={task} />
+        </div>
+        
+        {isEditing && (
+          <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+             <FileAttachments entityId={task.id} />
           </div>
         )}
       </div>

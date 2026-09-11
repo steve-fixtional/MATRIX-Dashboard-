@@ -26,8 +26,10 @@ export function AgendaView({ events, onEventClick }: AgendaViewProps) {
         <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
           <CalendarIcon className="h-8 w-8 text-neutral-400" />
         </div>
-        <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">No upcoming events</h3>
-        <p className="text-sm text-neutral-500 max-w-sm">Enjoy your free time, or create a new event to get started.</p>
+        <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">Your Schedule</h3>
+        <p className="text-sm text-neutral-500 max-w-sm mb-4">
+          Events created here are stored offline. You can also connect a cloud calendar in the settings.
+        </p>
       </div>
     );
   }

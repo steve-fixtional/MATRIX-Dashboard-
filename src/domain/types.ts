@@ -11,6 +11,30 @@ export interface BaseEntity {
   _conflicts?: any[]; // Store conflicting versions here for future resolution
 }
 
+export type ProjectStatus = 'active' | 'completed' | 'archived';
+
+export type StorageProvider = 'local' | 'google_drive' | 'remote';
+
+export interface MatrixFile extends BaseEntity {
+  filename: string;
+  mimeType: string;
+  size: number;
+  storageProvider: StorageProvider;
+  storageReference: string; // ID in local blob store or Google Drive
+  externalUrl?: string; // e.g. webViewLink
+  iconUrl?: string; // e.g. iconLink
+  isAvailableOffline: boolean;
+  relatedEntityIds: string[]; // Polymorphic relations to projects, notes, tasks, events
+}
+
+export interface Project extends BaseEntity {
+  name: string;
+  description: string;
+  color?: string;
+  icon?: string;
+  status: ProjectStatus;
+}
+
 export type ClipboardContentType = 'text' | 'url' | 'code' | 'image';
 
 export interface ClipboardItem extends BaseEntity {
@@ -19,6 +43,7 @@ export interface ClipboardItem extends BaseEntity {
   pinned: boolean;
   favorite: boolean;
   source?: string;
+  projectId?: string | null;
 }
 
 export interface Note extends BaseEntity {
@@ -29,6 +54,7 @@ export interface Note extends BaseEntity {
   archived: boolean;
   favorite: boolean;
   driveFileIds?: string[]; // Array of attached Google Drive file IDs
+  projectId?: string | null;
 }
 
 export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
@@ -40,6 +66,7 @@ export interface Task extends BaseEntity {
   dueDate: number | null;
   priority: TaskPriority;
   tags: string[];
+  reminders?: number[]; // array of minutes before task due date
   projectId?: string | null;
   relatedNoteId?: string | null;
   relatedEventId?: string | null;
@@ -56,6 +83,7 @@ export interface CalendarEvent extends BaseEntity {
   reminders: number[]; // array of minutes before event
   provider: 'local' | 'google';
   providerEventId: string | null;
+  projectId?: string | null;
 }
 
 export interface SyncState {
@@ -86,4 +114,10 @@ export interface AppSettings extends BaseEntity {
   weatherUnit: TempUnit;
   calendarDefaultView: CalendarView;
   calendarWeekStart: WeekStart;
+  manualLat?: number | null;
+  manualLon?: number | null;
+  manualLocationName?: string | null;
+  notificationsEnabled?: boolean;
+  tasksNotificationsEnabled?: boolean;
+  eventsNotificationsEnabled?: boolean;
 }

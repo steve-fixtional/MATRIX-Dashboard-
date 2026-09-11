@@ -1,12 +1,13 @@
-import { Search, Plus, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import { SyncIndicator } from '../ui/SyncIndicator';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../store/AuthContext';
 import { PWAInstallButton } from '../ui/PWAInstallButton';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export function TopBar() {
   const { user } = useAuth();
+  const location = useLocation();
   
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-neutral-200/80 bg-white/80 px-4 backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-950/80 sm:gap-x-6 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top)] h-[calc(4rem+env(safe-area-inset-top))]">
@@ -28,20 +29,12 @@ export function TopBar() {
           <PWAInstallButton />
         </div>
         <SyncIndicator />
-        
-        {/* Desktop Quick Action */}
-        <div className="hidden lg:block">
-          <Button size="icon" variant="primary" className="rounded-full h-9 w-9">
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">New action</span>
-          </Button>
-        </div>
 
         <div className="hidden sm:block h-6 w-px bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
 
         {/* Profile dropdown placeholder */}
         <div className="flex items-center">
-          <Link to="/settings" className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950 transition-transform active:scale-95">
+          <Link to="/settings" state={{ returnTo: location.pathname }} className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950 transition-transform active:scale-95">
             {user?.photoURL ? (
               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
             ) : (

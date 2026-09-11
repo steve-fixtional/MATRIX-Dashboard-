@@ -10,6 +10,7 @@ const CATEGORY_ICONS: Record<CommandCategory, any> = {
   projects: Folder,
   clipboard: Clipboard,
   bookmarks: Bookmark,
+  files: HardDrive,
   drive: HardDrive,
   actions: SearchIcon, // Default icon for actions
 };

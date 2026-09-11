@@ -1,10 +1,11 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, FileText, Calendar, Settings, Search, HardDrive, Key, ClipboardList, LogOut, LogIn } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, CheckSquare, FileText, Calendar, Settings, Search, HardDrive, Key, ClipboardList, LogOut, LogIn, FolderKanban } from 'lucide-react';
 import { cn } from '../../utils';
 import { useAuth } from '../../store/AuthContext';
 
 const NAV = [
   { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { name: 'Projects', to: '/projects', icon: FolderKanban },
   { name: 'Notes', to: '/notes', icon: FileText },
   { name: 'Tasks', to: '/tasks', icon: CheckSquare },
   { name: 'Calendar', to: '/calendar', icon: Calendar },
@@ -16,6 +17,7 @@ const NAV = [
 
 export function Sidebar() {
   const { user, login, logout } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="hidden md:flex flex-col h-full border-r border-neutral-200 bg-neutral-50/50 dark:border-neutral-800/50 dark:bg-neutral-900/20 transition-all duration-300 md:w-20 lg:w-64 shrink-0">
@@ -50,6 +52,7 @@ export function Sidebar() {
       <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/50 flex flex-col gap-1.5">
          <NavLink
             to="/settings"
+            state={{ returnTo: location.pathname }}
             className={({ isActive }) =>
               cn(
                 "flex items-center justify-center lg:justify-start gap-3 rounded-lg text-sm font-medium transition-colors md:h-12 md:w-12 lg:h-10 lg:w-full lg:px-3 lg:py-2",

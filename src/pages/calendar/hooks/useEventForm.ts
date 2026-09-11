@@ -7,7 +7,8 @@ export function useEventForm(initialDate?: Date, eventToEdit?: CalendarEvent) {
   const [description, setDescription] = useState(eventToEdit?.description || '');
   const [location, setLocation] = useState(eventToEdit?.location || '');
   const [allDay, setAllDay] = useState(eventToEdit?.allDay || false);
-  
+  const [reminders, setReminders] = useState<number[]>(eventToEdit?.reminders || [15]); // default 15 min
+
   const [provider, setProvider] = useState<'local' | 'google'>(eventToEdit?.provider || 'local');
   const [externalCalendars, setExternalCalendars] = useState<ExternalCalendar[]>([]);
   const [selectedExternalCalendarId, setSelectedExternalCalendarId] = useState<string>('primary');
@@ -43,34 +44,41 @@ export function useEventForm(initialDate?: Date, eventToEdit?: CalendarEvent) {
   const [startTime, setStartTime] = useState<number>(eventToEdit?.startTime || defaultStart.getTime());
   const [endTime, setEndTime] = useState<number>(eventToEdit?.endTime || defaultEnd.getTime());
 
-  // Simplify string date handling for inputs
   const startObj = new Date(startTime);
   const endObj = new Date(endTime);
 
-  const startDateStr = startObj.toISOString().substring(0, 10);
-  const startTimeStr = startObj.toTimeString().substring(0, 5);
+  const startDateStr = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, '0')}-${String(startObj.getDate()).padStart(2, '0')}`;
+  const startTimeStr = `${String(startObj.getHours()).padStart(2, '0')}:${String(startObj.getMinutes()).padStart(2, '0')}`;
   
-  const endDateStr = endObj.toISOString().substring(0, 10);
-  const endTimeStr = endObj.toTimeString().substring(0, 5);
+  const endDateStr = `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, '0')}-${String(endObj.getDate()).padStart(2, '0')}`;
+  const endTimeStr = `${String(endObj.getHours()).padStart(2, '0')}:${String(endObj.getMinutes()).padStart(2, '0')}`;
 
   const handleStartDateChange = (newDateStr: string) => {
-    const newD = new Date(newDateStr + 'T' + startTimeStr);
-    if (!isNaN(newD.getTime())) setStartTime(newD.getTime());
+    const [y, m, d] = newDateStr.split('-').map(Number);
+    const newD = new Date(startObj);
+    newD.setFullYear(y, m - 1, d);
+    setStartTime(newD.getTime());
   };
 
   const handleStartTimeChange = (newTimeStr: string) => {
-    const newD = new Date(startDateStr + 'T' + newTimeStr);
-    if (!isNaN(newD.getTime())) setStartTime(newD.getTime());
+    const [h, min] = newTimeStr.split(':').map(Number);
+    const newD = new Date(startObj);
+    newD.setHours(h, min, 0, 0);
+    setStartTime(newD.getTime());
   };
 
   const handleEndDateChange = (newDateStr: string) => {
-    const newD = new Date(newDateStr + 'T' + endTimeStr);
-    if (!isNaN(newD.getTime())) setEndTime(newD.getTime());
+    const [y, m, d] = newDateStr.split('-').map(Number);
+    const newD = new Date(endObj);
+    newD.setFullYear(y, m - 1, d);
+    setEndTime(newD.getTime());
   };
 
   const handleEndTimeChange = (newTimeStr: string) => {
-    const newD = new Date(endDateStr + 'T' + newTimeStr);
-    if (!isNaN(newD.getTime())) setEndTime(newD.getTime());
+    const [h, min] = newTimeStr.split(':').map(Number);
+    const newD = new Date(endObj);
+    newD.setHours(h, min, 0, 0);
+    setEndTime(newD.getTime());
   };
 
   const buildEventData = (): Partial<CalendarEvent> | null => {
@@ -91,7 +99,7 @@ export function useEventForm(initialDate?: Date, eventToEdit?: CalendarEvent) {
       endTime,
       allDay,
       provider,
-      reminders: [],
+      reminders,
       recurrenceRule: null,
       providerEventId: eventToEdit?.providerEventId || null
     };
@@ -102,6 +110,7 @@ export function useEventForm(initialDate?: Date, eventToEdit?: CalendarEvent) {
     description, setDescription,
     location, setLocation,
     allDay, setAllDay,
+    reminders, setReminders,
     provider, setProvider,
     externalCalendars,
     selectedExternalCalendarId, setSelectedExternalCalendarId,

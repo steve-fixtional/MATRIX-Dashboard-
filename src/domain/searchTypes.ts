@@ -1,4 +1,4 @@
-export type SearchResultType = 'notes' | 'tasks' | 'events' | 'projects' | 'clipboard' | 'bookmarks' | 'drive';
+export type SearchResultType = 'notes' | 'tasks' | 'events' | 'projects' | 'clipboard' | 'bookmarks' | 'drive' | 'files';
 
 export interface SearchResult {
   id: string;

@@ -58,6 +58,57 @@
         "_conflicts": { "type": "array", "maxLength": 10 }
       },
       "required": ["title", "startTime", "endTime", "allDay", "createdAt", "updatedAt", "version"]
+    },
+    "VaultMeta": {
+      "title": "VaultMeta",
+      "description": "Encrypted vault configuration and KDF parameters (zero knowledge, no master password or keys)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "vaultVersion": { "type": "number" },
+        "kdf": {
+          "type": "object",
+          "properties": {
+            "algorithm": { "type": "string" },
+            "hash": { "type": "string" },
+            "iterations": { "type": "number" },
+            "salt": { "type": "string", "maxLength": 128 }
+          },
+          "required": ["algorithm", "hash", "iterations", "salt"]
+        },
+        "evk": {
+          "type": "object",
+          "properties": {
+            "encryptedVaultKey": { "type": "string", "maxLength": 512 },
+            "evkIv": { "type": "string", "maxLength": 64 }
+          },
+          "required": ["encryptedVaultKey", "evkIv"]
+        },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["id", "vaultVersion", "kdf", "evk", "createdAt", "updatedAt", "version"]
+    },
+    "VaultItem": {
+      "title": "VaultItem",
+      "description": "Encrypted password vault item (zero knowledge, no plaintext title, username, password, notes, or URL)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "vaultVersion": { "type": "number" },
+        "schemaVersion": { "type": "number" },
+        "iv": { "type": "string", "maxLength": 64 },
+        "ciphertext": { "type": "string", "maxLength": 65536 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "deletedAt": { "type": ["number", "null"] },
+        "version": { "type": "number" },
+        "_conflicts": { "type": "array", "maxLength": 10 }
+      },
+      "required": ["id", "vaultVersion", "schemaVersion", "iv", "ciphertext", "createdAt", "updatedAt", "version"]
     }
   },
   "firestore": {
@@ -72,6 +123,22 @@
     "/users/{userId}/events/{eventId}": {
       "schema": { "$ref": "#/entities/CalendarEvent" },
       "description": "User calendar events"
+    },
+    "/users/{userId}/vault_meta/{metaId}": {
+      "schema": { "$ref": "#/entities/VaultMeta" },
+      "description": "Encrypted vault configuration"
+    },
+    "/users/{userId}/vault_items/{itemId}": {
+      "schema": { "$ref": "#/entities/VaultItem" },
+      "description": "Encrypted vault item records"
+    },
+    "/users/{userId}/vault/config/{metaId}": {
+      "schema": { "$ref": "#/entities/VaultMeta" },
+      "description": "Encrypted vault configuration (conceptual path)"
+    },
+    "/users/{userId}/vault/items/{itemId}": {
+      "schema": { "$ref": "#/entities/VaultItem" },
+      "description": "Encrypted vault item records (conceptual path)"
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "MATRIX",
   "description": "A private, local-first, cross-platform personal command center",
-  "requestFramePermissions": ["geolocation"],
+  "requestFramePermissions": ["geolocation", "clipboard-read", "clipboard-write"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

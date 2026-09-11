@@ -3,6 +3,8 @@ import { CalendarEvent } from '../../domain/types';
 import { Plus, X, Calendar as CalendarIcon, Clock, MapPin, AlignLeft, RefreshCw, Bell } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useEventForm } from './hooks/useEventForm';
+import { FileAttachments } from '../../components/ui/FileAttachments';
+import { ItemSyncStatus } from '../../components/ui/ItemSyncStatus';
 
 interface EventCreatorProps {
   initialDate?: Date;
@@ -18,6 +20,7 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
     description, setDescription,
     location, setLocation,
     allDay, setAllDay,
+    reminders, setReminders,
     provider, setProvider,
     externalCalendars,
     selectedExternalCalendarId, setSelectedExternalCalendarId,
@@ -40,7 +43,10 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-lg border border-neutral-200 dark:border-neutral-800 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h2 className="font-semibold text-lg">{eventToEdit ? 'Edit Event' : 'New Event'}</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <h2 className="font-semibold text-lg">{eventToEdit ? 'Edit Event' : 'New Event'}</h2>
+            {eventToEdit && <ItemSyncStatus item={eventToEdit} />}
+          </div>
           <button onClick={onCancel} className="text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 p-1.5 rounded-full transition-colors">
             <X className="h-5 w-5" />
           </button>
@@ -128,6 +134,29 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
             </div>
 
             <div className="flex items-start gap-3">
+              <Bell className="h-4 w-4 text-neutral-500 mt-2 shrink-0" />
+              <select
+                value={reminders.length > 0 ? reminders[0] : -1}
+                onChange={e => {
+                  const val = parseInt(e.target.value, 10);
+                  if (val === -1) {
+                    setReminders([]);
+                  } else {
+                    setReminders([val]);
+                  }
+                }}
+                className="w-full bg-transparent border-none focus:ring-0 p-1.5 text-sm dark:text-neutral-100 cursor-pointer text-neutral-900"
+              >
+                <option value="-1">No reminder</option>
+                <option value="0">At time of event</option>
+                <option value="5">5 minutes before</option>
+                <option value="15">15 minutes before</option>
+                <option value="60">1 hour before</option>
+                <option value="1440">1 day before</option>
+              </select>
+            </div>
+
+            <div className="flex items-start gap-3">
               <AlignLeft className="h-4 w-4 text-neutral-500 mt-2 shrink-0" />
               <textarea 
                 placeholder="Add description or notes"
@@ -137,6 +166,12 @@ export function EventCreator({ initialDate, eventToEdit, onSave, onCancel, onDel
                 className="w-full bg-transparent border-none focus:ring-0 p-1.5 text-sm resize-none placeholder:text-neutral-400 dark:text-neutral-100"
               />
             </div>
+            
+            {eventToEdit && (
+              <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 mt-4">
+                <FileAttachments entityId={eventToEdit.id} />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center pt-4 border-t border-neutral-100 dark:border-neutral-800">

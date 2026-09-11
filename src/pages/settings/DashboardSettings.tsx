@@ -38,7 +38,8 @@ export function DashboardSettings() {
   };
 
   const resetLayout = async () => {
-    localStorage.removeItem('matrix_dashboard_layout');
+    // Explicitly overwrite the maps with empty objects, which forces mergeLayoutWithPreferences 
+    // to fall back entirely to DEFAULT_DASHBOARD_LAYOUT values.
     await saveDashboardPreferences({ widgetVisibility: {}, widgetOrder: {} });
     const updated = await getDashboardPreferences();
     setPref(updated);

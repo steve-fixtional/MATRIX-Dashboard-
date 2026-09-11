@@ -8,6 +8,7 @@ const TYPE_LABELS: Record<SearchResultType, string> = {
   projects: 'Projects',
   clipboard: 'Clipboard',
   bookmarks: 'Bookmarks',
+  files: 'Files',
   drive: 'Google Drive',
 };
 

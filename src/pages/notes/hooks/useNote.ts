@@ -112,6 +112,14 @@ export function useNote({
     updateNote({ driveFileIds: newFileIds });
   };
 
+  const resolveConflict = (conflictNote: Partial<Note>) => {
+    updateNote({
+      title: conflictNote.title || '',
+      content: conflictNote.content || '',
+      _conflicts: [], // clear conflicts once resolved
+    });
+  };
+
   // Keyboard shortcut to prevent default save
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -143,5 +151,6 @@ export function useNote({
     toggleArchive,
     attachFile,
     removeFile,
+    resolveConflict,
   };
 }

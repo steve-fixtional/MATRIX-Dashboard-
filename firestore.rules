@@ -78,6 +78,67 @@ service cloud.firestore {
           && (data.get('_conflicts', null) == null || (data._conflicts is list && data._conflicts.size() <= 10));
     }
 
+    function isValidPreference(data, id) {
+      return data.keys().hasAll(['createdAt', 'updatedAt', 'version'])
+          && data.createdAt is number
+          && data.updatedAt is number
+          && data.version is number
+          && (data.get('id', null) == null || (data.id is string && data.id == id))
+          && (data.get('deletedAt', null) == null || data.deletedAt is number)
+          && (data.get('_conflicts', null) == null || (data._conflicts is list && data._conflicts.size() <= 10))
+          && (
+             (id == 'app_settings' && data.keys().hasAll(['theme', 'weatherUnit', 'calendarDefaultView', 'calendarWeekStart'])
+                && data.theme in ['system', 'light', 'dark']
+                && data.weatherUnit in ['celsius', 'fahrenheit']
+                && data.calendarDefaultView in ['month', 'week', 'day', 'agenda']
+                && data.calendarWeekStart in ['sunday', 'monday']
+                && (data.get('manualLat', null) == null || data.manualLat is number)
+                && (data.get('manualLon', null) == null || data.manualLon is number)
+             )
+             ||
+             (id == 'dashboard' && data.keys().hasAll(['widgetVisibility', 'widgetOrder'])
+                && data.widgetVisibility is map
+                && data.widgetOrder is map
+             )
+          );
+    }
+
+    function isValidVaultMeta(data) {
+      return data.keys().hasAll(['id', 'vaultVersion', 'kdf', 'evk', 'createdAt', 'updatedAt', 'version'])
+          && data.keys().hasOnly(['id', 'vaultVersion', 'kdf', 'evk', 'createdAt', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+          && data.id is string && data.id.size() <= 64
+          && data.vaultVersion is number && data.vaultVersion == 1
+          && data.kdf is map
+          && data.kdf.algorithm == 'PBKDF2'
+          && data.kdf.hash == 'SHA-256'
+          && data.kdf.iterations >= 100000
+          && data.kdf.salt is string && data.kdf.salt.size() <= 128
+          && data.evk is map
+          && data.evk.encryptedVaultKey is string && data.evk.encryptedVaultKey.size() <= 512
+          && data.evk.evkIv is string && data.evk.evkIv.size() <= 64
+          && data.createdAt is number
+          && data.updatedAt is number
+          && data.version is number
+          && (data.get('deletedAt', null) == null || data.deletedAt is number)
+          && (data.get('_conflicts', null) == null || (data._conflicts is list && data._conflicts.size() <= 10));
+    }
+
+    function isValidVaultItem(data) {
+      // STRICT ZERO KNOWLEDGE: Plaintext fields (password, username, title, notes, url) are strictly forbidden
+      return data.keys().hasAll(['id', 'vaultVersion', 'schemaVersion', 'iv', 'ciphertext', 'createdAt', 'updatedAt', 'version'])
+          && data.keys().hasOnly(['id', 'vaultVersion', 'schemaVersion', 'iv', 'ciphertext', 'createdAt', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+          && data.id is string && data.id.size() <= 128
+          && data.vaultVersion is number && data.vaultVersion == 1
+          && data.schemaVersion is number && data.schemaVersion == 1
+          && data.iv is string && data.iv.size() <= 64
+          && data.ciphertext is string && data.ciphertext.size() <= 65536
+          && data.createdAt is number
+          && data.updatedAt is number
+          && data.version is number
+          && (data.get('deletedAt', null) == null || data.deletedAt is number)
+          && (data.get('_conflicts', null) == null || (data._conflicts is list && data._conflicts.size() <= 10));
+    }
+
     match /users/{userId} {
       match /notes/{noteId} {
         allow read: if isSignedIn() && request.auth.uid == userId;
@@ -141,6 +202,92 @@ service cloud.firestore {
                       && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'contentType', 'pinned', 'favorite', 'source', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
                       && incoming().createdAt == existing().createdAt;
         allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /preferences/{preferenceId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && (preferenceId == 'app_settings' || preferenceId == 'dashboard')
+                      && isValidPreference(incoming(), preferenceId)
+                      && incoming().keys().size() <= 14;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && (preferenceId == 'app_settings' || preferenceId == 'dashboard')
+                      && isValidPreference(incoming(), preferenceId)
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'theme', 'weatherUnit', 'calendarDefaultView', 'calendarWeekStart', 'manualLat', 'manualLon', 'widgetVisibility', 'widgetOrder', 'updatedAt', 'deletedAt', 'version', '_conflicts'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /vault_meta/{metaId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(metaId)
+                      && isValidVaultMeta(incoming())
+                      && incoming().keys().size() <= 11;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(metaId)
+                      && isValidVaultMeta(incoming())
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['vaultVersion', 'kdf', 'evk', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /vault_items/{itemId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(itemId)
+                      && isValidVaultItem(incoming())
+                      && incoming().keys().size() <= 12;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(itemId)
+                      && isValidVaultItem(incoming())
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['vaultVersion', 'schemaVersion', 'iv', 'ciphertext', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Explicit conceptual /users/{userId}/vault/... hierarchy support
+      match /vault/config/{metaId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(metaId)
+                      && isValidVaultMeta(incoming())
+                      && incoming().keys().size() <= 11;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(metaId)
+                      && isValidVaultMeta(incoming())
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['vaultVersion', 'kdf', 'evk', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /vault/items/{itemId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(itemId)
+                      && isValidVaultItem(incoming())
+                      && incoming().keys().size() <= 12;
+        allow update: if isSignedIn() 
+                      && request.auth.uid == userId
+                      && isValidId(itemId)
+                      && isValidVaultItem(incoming())
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['vaultVersion', 'schemaVersion', 'iv', 'ciphertext', 'updatedAt', 'deletedAt', 'version', '_conflicts', 'syncStatus', 'syncError'])
+                      && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /vault/{vaultId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if isSignedIn() && request.auth.uid == userId && (isValidVaultMeta(incoming()) || isValidVaultItem(incoming()));
       }
     }
   }

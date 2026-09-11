@@ -8,6 +8,7 @@ import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { QuickNoteWidget } from '../components/dashboard/QuickNoteWidget';
 import { RecentNotesWidget } from '../components/dashboard/RecentNotesWidget';
 import { SyncIndicator } from '../components/ui/SyncIndicator';
+import { OnboardingBanner } from '../components/ui/OnboardingBanner';
 import { getDashboardPreferences, migrateLegacyLayout, mergeLayoutWithPreferences } from '../services/dashboardService';
 import { useSyncState } from '../store/SyncContext';
 
@@ -57,12 +58,14 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 auto-rows-min">
+      <OnboardingBanner />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-min">
         {visibleLayout.map(widget => {
-          // Map the specific logical colSpans to Tailwind classes
           let spanClass = 'col-span-1';
           if (widget.colSpan === 2) spanClass = 'col-span-1 md:col-span-2 lg:col-span-2';
           if (widget.colSpan === 3) spanClass = 'col-span-1 md:col-span-2 lg:col-span-3';
+          if (widget.colSpan === 4) spanClass = 'col-span-1 md:col-span-2 lg:col-span-4';
 
           return (
             <div key={widget.id} className={spanClass}>

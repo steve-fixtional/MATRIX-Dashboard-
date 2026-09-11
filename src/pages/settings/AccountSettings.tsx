@@ -1,10 +1,10 @@
 import { useAuth } from '../../store/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, LogIn, AlertCircle } from 'lucide-react';
 
 export function AccountSettings() {
-  const { user, logout } = useAuth();
+  const { user, logout, login, isSigningIn, error } = useAuth();
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,7 +46,30 @@ export function AccountSettings() {
               <div className="h-12 w-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
                 <User className="h-6 w-6 text-neutral-400" />
               </div>
-              <div className="text-sm text-neutral-500 mb-4">You are not currently signed in.</div>
+              <div className="text-sm text-neutral-500 mb-6">You are not currently signed in.</div>
+              <Button 
+                onClick={login} 
+                disabled={isSigningIn}
+                className="w-full sm:w-auto"
+              >
+                {isSigningIn ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Sign In with Google
+                  </span>
+                )}
+              </Button>
+              {error && (
+                <div className="mt-4 flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-900/50 max-w-sm">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="text-left">{error.message}</span>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

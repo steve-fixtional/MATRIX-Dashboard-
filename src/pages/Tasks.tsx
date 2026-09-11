@@ -15,6 +15,7 @@ export function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('today');
   const [isCreatingFocus, setIsCreatingFocus] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
     const loadedTasks = await getTasks();
@@ -28,6 +29,9 @@ export function Tasks() {
   // Check URL params for "new" trigger or "id" selection
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const pid = params.get('projectId');
+    if (pid) setProjectId(pid);
+
     if (params.get('new') === 'true') {
       setIsCreatingFocus(true);
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -37,7 +41,7 @@ export function Tasks() {
     }
   }, []);
 
-  const handleCreateTask = async (title: string, priority: TaskPriority, dueDate: number | null) => {
+  const handleCreateTask = async (title: string, priority: TaskPriority, dueDate: number | null, reminders: number[] = []) => {
     // Determine due date based on active filter if not provided
     let finalDueDate = dueDate;
     if (!finalDueDate && activeFilter === 'today') {
@@ -51,6 +55,8 @@ export function Tasks() {
       priority,
       dueDate: finalDueDate,
       tags: [],
+      reminders,
+      projectId
     });
     setTasks(prev => [newTask, ...prev]);
   };
@@ -105,8 +111,8 @@ export function Tasks() {
     <PageWrapper className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-        <Button className="hidden md:flex" variant="secondary" size="sm" onClick={() => setIsCreatingFocus(true)}>
-           <Plus className="h-4 w-4 mr-2" /> New Task
+        <Button variant="secondary" size="sm" onClick={() => setIsCreatingFocus(true)}>
+           <Plus className="h-4 w-4 mr-2" /> Add task
         </Button>
       </div>
 
@@ -167,12 +173,14 @@ export function Tasks() {
                     {activeFilter === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : <ListTodo className="h-6 w-6" />}
                   </div>
                   <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">
-                    {activeFilter === 'completed' ? 'No completed tasks' : 'All clear'}
+                    {activeFilter === 'completed' ? 'No completed tasks' : 'Your Task List'}
                   </h3>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-neutral-500 max-w-sm mx-auto">
                     {activeFilter === 'completed' 
                       ? "You haven't completed any tasks yet." 
-                      : "You're all caught up for this view."}
+                      : activeFilter === 'today' 
+                      ? "Focus on what matters today. Add your first task above." 
+                      : "Tasks created here live securely on your device."}
                   </p>
                 </div>
               ) : (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Input } from '../components/ui/Input';
-import { Search as SearchIcon, Command, FileText, ListTodo, Calendar, Folder, Clipboard, Bookmark, HardDrive } from 'lucide-react';
+import { Search as SearchIcon, Command, FileText, ListTodo, Calendar, Folder, Clipboard, Bookmark, HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ const CATEGORY_ICONS: Record<CommandCategory, any> = {
   projects: Folder,
   clipboard: Clipboard,
   bookmarks: Bookmark,
+  files: HardDrive,
   drive: HardDrive,
   actions: SearchIcon,
 };
@@ -22,7 +23,7 @@ export function Search() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   
-  const { commandGroups, flatCommands } = useCommands(query);
+  const { commandGroups, flatCommands, isLoading, error } = useCommands(query);
 
   return (
     <PageWrapper className="space-y-6">
@@ -33,18 +34,33 @@ export function Search() {
       <div className="relative max-w-3xl">
         <SearchIcon className="absolute left-4 top-3.5 h-5 w-5 text-neutral-400" />
         <Input 
-          className="pl-12 h-12 md:h-14 text-base md:text-lg rounded-xl shadow-sm bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-all"
-          placeholder="Search notes, tasks, events..."
+          className="pl-12 pr-12 h-12 md:h-14 text-base md:text-lg rounded-xl shadow-sm bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-all"
+          placeholder="Search notes, tasks, projects, events..."
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {isLoading && (
+           <div className="absolute right-4 top-3.5 md:top-4">
+             <Loader2 className="h-5 w-5 text-neutral-400 animate-spin" />
+           </div>
+        )}
       </div>
 
-      {!query.trim() && (
+      {error && (
+        <div className="p-4 max-w-3xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-xl flex gap-3 items-start">
+           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+           <div>
+             <div className="font-semibold text-sm">Search Error</div>
+             <div className="text-sm opacity-90">{error.message || 'An unexpected error occurred while searching.'}</div>
+           </div>
+        </div>
+      )}
+
+      {!query.trim() && !error && (
         <div className="pt-8 max-w-3xl">
           <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-1">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <button 
               onClick={() => navigate('/notes?new=true')}
               className="flex items-center gap-3 p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors text-left"
@@ -53,8 +69,7 @@ export function Search() {
                 <FileText className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
               </div>
               <div>
-                <div className="font-medium">Create Note</div>
-                <div className="text-xs text-neutral-500">Jot down a thought</div>
+                <div className="font-medium text-sm">Note</div>
               </div>
             </button>
 
@@ -66,21 +81,31 @@ export function Search() {
                 <ListTodo className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
               </div>
               <div>
-                <div className="font-medium">New Task</div>
-                <div className="text-xs text-neutral-500">Add a to-do item</div>
+                <div className="font-medium text-sm">Task</div>
               </div>
             </button>
 
             <button 
-              onClick={() => navigate('/calendar')}
+              onClick={() => navigate('/calendar?new=true')}
               className="flex items-center gap-3 p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors text-left"
             >
               <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0">
                 <Calendar className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
               </div>
               <div>
-                <div className="font-medium">Schedule Event</div>
-                <div className="text-xs text-neutral-500">Add to calendar</div>
+                <div className="font-medium text-sm">Event</div>
+              </div>
+            </button>
+            
+            <button 
+              onClick={() => navigate('/projects?new=true')}
+              className="flex items-center gap-3 p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors text-left"
+            >
+              <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0">
+                <Folder className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
+              </div>
+              <div>
+                <div className="font-medium text-sm">Project</div>
               </div>
             </button>
           </div>
@@ -96,9 +121,9 @@ export function Search() {
         </div>
       )}
 
-      {query.trim() !== '' && (
+      {query.trim() !== '' && !error && (
         <div className="pt-4 max-w-3xl space-y-8">
-          {flatCommands.length === 0 ? (
+          {flatCommands.length === 0 && !isLoading ? (
             <div className="py-12 text-center text-neutral-500">
               No results found for "{query}"
             </div>
@@ -119,10 +144,10 @@ export function Search() {
                       <button
                         key={command.id}
                         onClick={() => command.onSelect()}
-                        className="w-full text-left px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all flex flex-col gap-1 outline-none"
+                        className="w-full text-left px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all flex flex-col gap-1 outline-none group"
                       >
                         <div className="flex items-center justify-between gap-4">
-                          <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                          <span className="font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">
                             {command.title}
                           </span>
                           {command.updatedAt && (

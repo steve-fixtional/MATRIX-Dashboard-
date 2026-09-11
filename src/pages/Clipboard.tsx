@@ -13,10 +13,26 @@ export function Clipboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncEnabled, setIsSyncEnabled] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsSyncEnabled(isClipboardSyncEnabled());
     loadItems();
+    
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get('projectId');
+    if (pid) setProjectId(pid);
+    
+    if (params.get('new') === 'true') {
+      // Auto capture on load if requested
+      captureClipboardText(pid).then(() => {
+        loadItems();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }).catch((e: any) => {
+        alert("Could not access clipboard. Ensure you have granted permission: " + e.message);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
   }, []);
 
   const loadItems = async () => {
@@ -30,8 +46,12 @@ export function Clipboard() {
   };
 
   const handleCapture = async () => {
-    await captureClipboardText();
-    loadItems();
+    try {
+      await captureClipboardText(projectId);
+      loadItems();
+    } catch (e: any) {
+      alert("Could not access clipboard. Ensure you have granted permission: " + e.message);
+    }
   };
 
   const handleTogglePin = async (item: ClipboardItem) => {
@@ -100,18 +120,27 @@ export function Clipboard() {
 
       {showSettings && (
         <div className="p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-4">
-          <h2 className="text-lg font-medium">Privacy Settings</h2>
-          <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Privacy & Capabilities</h2>
+          <div className="flex items-center justify-between py-2">
             <div className="max-w-md">
               <div className="font-medium">Sync clipboard across devices</div>
               <div className="text-sm text-neutral-500">
-                When enabled, your clipboard items will be synchronized to the cloud. Keep this disabled if you frequently copy sensitive information like passwords.
+                When enabled, clipboard items are encrypted and synchronized to your account. When disabled, data never leaves this device.
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" checked={isSyncEnabled} onChange={(e) => handleToggleSync(e.target.checked)} />
               <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-neutral-400 dark:peer-focus:ring-neutral-600 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-neutral-900 dark:peer-checked:bg-neutral-100"></div>
             </label>
+          </div>
+          <div className="text-xs text-neutral-500 space-y-2 border-t border-neutral-100 dark:border-neutral-800 pt-4">
+            <p className="font-medium text-neutral-700 dark:text-neutral-300">Platform Limitations:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li><strong>Desktop Browsers:</strong> Supports capturing text and image data on click. Cannot continuously monitor clipboard in background due to web security constraints.</li>
+              <li><strong>Installed PWA:</strong> Operates exactly like the browser experience, requiring manual capture via the "Capture" button.</li>
+              <li><strong>Mobile (iOS/Android):</strong> Access is strictly gated. You must tap the "Capture" button to invoke the secure OS permission prompt for text or images.</li>
+            </ul>
+            <p className="pt-2 italic">Unpinned history is automatically pruned to the 50 most recent items to preserve storage and privacy.</p>
           </div>
         </div>
       )}
@@ -138,8 +167,8 @@ export function Clipboard() {
         <div className="pt-12">
           <EmptyState 
             icon={ClipboardIcon} 
-            title="Clipboard Empty" 
-            description="Your copied items will appear here."
+            title={searchQuery ? "No matches found" : "Clipboard Manager"} 
+            description={searchQuery ? "Try a different search term." : "Save text snippets, links, and code blocks. Everything is stored locally on this device until you enable sync."}
           />
         </div>
       ) : (

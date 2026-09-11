@@ -4,7 +4,7 @@ import { Plus, Flag, Calendar as CalendarIcon, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
 interface TaskCreatorProps {
-  onSave: (title: string, priority: TaskPriority, dueDate: number | null) => void;
+  onSave: (title: string, priority: TaskPriority, dueDate: number | null, reminders: number[]) => void;
   autoFocus?: boolean;
 }
 
@@ -12,6 +12,9 @@ export function TaskCreator({ onSave, autoFocus = false }: TaskCreatorProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('none');
   const [showOptions, setShowOptions] = useState(false);
+  const [dueDate, setDueDate] = useState<string>('');
+  const [dueTime, setDueTime] = useState<string>('');
+  const [reminders, setReminders] = useState<number[]>([0]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -23,9 +26,27 @@ export function TaskCreator({ onSave, autoFocus = false }: TaskCreatorProps) {
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!title.trim()) return;
-    onSave(title.trim(), priority, null); // Simplified due date for inline creator
+    
+    let parsedDate = null;
+    if (dueDate) {
+      const d = new Date(dueDate);
+      if (dueTime) {
+        const [h, m] = dueTime.split(':').map(Number);
+        d.setHours(h, m, 0, 0);
+      }
+      parsedDate = d.getTime();
+    }
+    
+    // Pass reminders via event or modify the signature
+    // Since onSave expects (title, priority, dueDate), let's adjust it
+    // Or we can just call it if onSave supports it. Wait, we need to update Tasks.tsx handleCreateTask signature.
+    // I will call onSave with 4 arguments.
+    (onSave as any)(title.trim(), priority, parsedDate, reminders);
     setTitle('');
     setPriority('none');
+    setDueDate('');
+    setDueTime('');
+    setReminders([0]);
     setShowOptions(false);
   };
 
@@ -68,8 +89,8 @@ export function TaskCreator({ onSave, autoFocus = false }: TaskCreatorProps) {
       </div>
 
       {showOptions && (
-        <div className="flex items-center justify-between p-2 px-3 bg-neutral-50 dark:bg-neutral-900/50 border-t border-neutral-100 dark:border-neutral-800/50">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 p-2 px-3 bg-neutral-50 dark:bg-neutral-900/50 border-t border-neutral-100 dark:border-neutral-800/50">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={cyclePriority}
@@ -78,22 +99,57 @@ export function TaskCreator({ onSave, autoFocus = false }: TaskCreatorProps) {
               <Flag className="h-3.5 w-3.5" />
               {priority === 'none' ? 'Priority' : priority.charAt(0).toUpperCase() + priority.slice(1)}
             </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              Today
-            </button>
+            <div className="flex items-center gap-1">
+              <CalendarIcon className="h-3.5 w-3.5 text-neutral-500" />
+              <input 
+                type="date" 
+                value={dueDate} 
+                onChange={(e) => setDueDate(e.target.value)} 
+                className="bg-transparent border border-neutral-200 dark:border-neutral-700 rounded-md text-xs px-1.5 py-1"
+              />
+            </div>
+            {dueDate && (
+              <div className="flex items-center gap-1">
+                <input 
+                  type="time" 
+                  value={dueTime} 
+                  onChange={(e) => setDueTime(e.target.value)} 
+                  className="bg-transparent border border-neutral-200 dark:border-neutral-700 rounded-md text-xs px-1.5 py-1"
+                />
+              </div>
+            )}
+            {dueDate && (
+              <select
+                value={reminders.length > 0 ? reminders[0] : -1}
+                onChange={e => {
+                  const val = parseInt(e.target.value, 10);
+                  if (val === -1) {
+                    setReminders([]);
+                  } else {
+                    setReminders([val]);
+                  }
+                }}
+                className="bg-transparent border border-neutral-200 dark:border-neutral-700 rounded-md text-xs px-1.5 py-1 max-w-[120px]"
+              >
+                <option value="-1">No reminder</option>
+                <option value="0">At due time</option>
+                <option value="5">5 mins before</option>
+                <option value="15">15 mins before</option>
+                <option value="60">1 hour before</option>
+                <option value="1440">1 day before</option>
+              </select>
+            )}
           </div>
-          <Button 
-            type="submit" 
-            size="sm" 
-            disabled={!title.trim()}
-            className="h-8 text-xs px-4"
-          >
-            Add
-          </Button>
+          <div className="flex justify-end">
+            <Button 
+              type="submit" 
+              size="sm" 
+              disabled={!title.trim()}
+              className="h-8 text-xs px-4"
+            >
+              Add Task
+            </Button>
+          </div>
         </div>
       )}
     </form>

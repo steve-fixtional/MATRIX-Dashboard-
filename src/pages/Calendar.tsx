@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { CalendarEvent } from '../domain/types';
 import { getEvents, saveEvent, deleteEvent } from '../services/calendarService';
+import { initGoogleCalendarAuth } from '../services/googleCalendarService';
 import { AgendaView } from './calendar/AgendaView';
 import { MonthView } from './calendar/MonthView';
 import { WeekView } from './calendar/WeekView';
@@ -11,7 +12,7 @@ import { CalendarSettings } from './calendar/CalendarSettings';
 import { CalendarHeader } from './calendar/CalendarHeader';
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlignJustify, Settings } from 'lucide-react';
-import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay } from 'date-fns';
+import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, endOfDay } from 'date-fns';
 import { getAppSettings } from '../services/settingsService';
 
 type ViewMode = 'agenda' | 'day' | 'week' | 'month';
@@ -27,6 +28,13 @@ export function Calendar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [projectId, setProjectId] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Track the currently loaded range to prevent duplicate loading if the date hasn't moved outside the buffer
+  const loadedRange = useRef<{start: number, end: number} | null>(null);
 
   useEffect(() => {
     // Load default view mode from settings
@@ -38,13 +46,47 @@ export function Calendar() {
   }, []);
 
   const loadEvents = useCallback(async () => {
-    // Load a wide range of events for simplicity right now
-    const start = new Date(currentDate.getFullYear() - 1, 0, 1).getTime();
-    const end = new Date(currentDate.getFullYear() + 1, 11, 31).getTime();
+    setError(null);
+    setLoading(true);
     
-    const loadedEvents = await getEvents(start, end);
-    setEvents(loadedEvents);
-  }, [currentDate]);
+    try {
+      // Initialize Google Calendar auth when calendar is loaded
+      await initGoogleCalendarAuth().catch(console.error);
+
+      let start: number;
+      let end: number;
+
+      switch (viewMode) {
+        case 'month':
+        case 'agenda':
+          start = startOfMonth(subMonths(currentDate, 1)).getTime();
+          end = endOfMonth(addMonths(currentDate, 1)).getTime();
+          break;
+        case 'week':
+          start = startOfWeek(subWeeks(currentDate, 1)).getTime();
+          end = endOfWeek(addWeeks(currentDate, 1)).getTime();
+          break;
+        case 'day':
+          start = startOfDay(subDays(currentDate, 1)).getTime();
+          end = endOfDay(addDays(currentDate, 1)).getTime();
+          break;
+      }
+
+      if (loadedRange.current && loadedRange.current.start === start && loadedRange.current.end === end) {
+        setLoading(false);
+        return;
+      }
+
+      const loadedEvents = await getEvents(start, end);
+      setEvents(loadedEvents);
+      loadedRange.current = { start, end };
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load events. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentDate, viewMode]);
 
   useEffect(() => {
     loadEvents();
@@ -53,6 +95,9 @@ export function Calendar() {
   // Check URL params for "new" trigger or "id" selection
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const pid = params.get('projectId');
+    if (pid) setProjectId(pid);
+
     if (params.get('new') === 'true') {
       setIsCreating(true);
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -96,6 +141,13 @@ export function Calendar() {
   };
 
   const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
+    // Inject projectId if this is a new event being created
+    if (!eventData.id || eventData.id.startsWith('gcal-')) {
+      if (projectId && !eventData.projectId) {
+        eventData.projectId = projectId;
+      }
+    }
+
     const newEvent = await saveEvent(eventData as any);
     
     // Optimistic update
@@ -177,12 +229,22 @@ export function Calendar() {
             </button>
           </div>
           <Button size="sm" onClick={() => setIsCreating(true)} className="shrink-0 ml-auto sm:ml-2"> 
-             <Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">New Event</span>
+             <Plus className="h-4 w-4 mr-1.5" /> Event
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-neutral-900/50 flex items-center justify-center z-10">
+            <div className="text-neutral-500 font-medium animate-pulse">Loading events...</div>
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-x-4 top-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm text-center font-medium z-10 border border-red-200 dark:border-red-800/50">
+            {error}
+          </div>
+        )}
         {viewMode === 'agenda' && <AgendaView events={events.filter(e => e.endTime >= startOfDay(new Date()).getTime())} onEventClick={handleEventClick} />}
         {viewMode === 'month' && <MonthView currentDate={currentDate} events={events} onEventClick={handleEventClick} onDateClick={handleDateClick} />}
         {viewMode === 'week' && <WeekView currentDate={currentDate} events={events} onEventClick={handleEventClick} onDateClick={handleDateClick} />}

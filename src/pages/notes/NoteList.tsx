@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Note } from '../../domain/types';
 import { formatDistanceToNow } from 'date-fns';
-import { Pin, Star, Search, Plus, Archive, Filter } from 'lucide-react';
+import { Pin, Star, Search, Plus, Archive, Filter, FileText } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
@@ -67,7 +67,7 @@ export function NoteList({ notes, selectedNoteId, onSelectNote, onNewNote, searc
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">Notes</h2>
           <Button size="sm" onClick={onNewNote}>
-            <Plus className="h-4 w-4 mr-1.5" /> New
+            <Plus className="h-4 w-4 mr-1.5" /> New note
           </Button>
         </div>
         
@@ -120,7 +120,18 @@ export function NoteList({ notes, selectedNoteId, onSelectNote, onNewNote, searc
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {filteredNotes.length === 0 ? (
+        {notes.length === 0 && !searchQuery ? (
+          <div className="p-8 text-center flex flex-col items-center">
+            <div className="h-10 w-10 bg-neutral-100 dark:bg-neutral-900 rounded-full flex items-center justify-center mb-3">
+              <FileText className="h-5 w-5 text-neutral-400" />
+            </div>
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">It's quiet here</h3>
+            <p className="text-xs text-neutral-500 mb-4 max-w-[200px]">Create your first note to capture ideas, meeting minutes, or daily journals.</p>
+            <Button size="sm" onClick={onNewNote}>
+              <Plus className="h-4 w-4 mr-1.5" /> Create note
+            </Button>
+          </div>
+        ) : filteredNotes.length === 0 ? (
           <div className="p-8 text-center text-neutral-500 text-sm flex flex-col items-center">
             {searchQuery ? "No notes found matching your search." : "No notes found in this view."}
           </div>
