@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Note } from '../domain/types';
 import { getNotes, saveNote, deleteNote } from '../services/noteService';
+import { crossTabSync } from '../services/crossTabSync';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { NoteList } from './notes/NoteList';
 import { NoteEditor } from './notes/NoteEditor';
@@ -20,6 +21,12 @@ export function Notes() {
 
   useEffect(() => {
     loadNotes();
+    const unsubscribe = crossTabSync.onDataChange((event) => {
+      if (event.storeName === 'notes') {
+        loadNotes();
+      }
+    });
+    return () => unsubscribe();
   }, [loadNotes]);
 
   // Check URL params for "new" trigger or "id" selection

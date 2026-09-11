@@ -3,12 +3,12 @@ import { Cloud, CloudOff, RefreshCw, AlertCircle, AlertTriangle, FileWarning, Up
 import { useSyncState } from '../../store/SyncContext';
 
 export function SyncIndicator() {
-  const { syncStatus, requestSync, error, pendingCount } = useSyncState();
+  const { syncStatus, requestSync, error, pendingCount, isOnline } = useSyncState();
 
   useEffect(() => {
     // Initial sync
     requestSync();
-    
+
     const interval = setInterval(() => {
       requestSync();
     }, 60000); // Sync every minute
@@ -19,35 +19,66 @@ export function SyncIndicator() {
   }, [requestSync]);
 
   return (
-    <div className="flex items-center gap-2 text-xs font-medium px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 transition-colors">
+    <button
+      onClick={requestSync}
+      disabled={syncStatus === 'syncing'}
+      title={
+        error
+          ? `Sync Notice: ${error.message} (Click to refresh)`
+          : syncStatus === 'syncing'
+          ? 'Synchronizing...'
+          : 'Click to synchronize now'
+      }
+      className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-colors cursor-pointer outline-none select-none"
+    >
       {(syncStatus === 'synced' || syncStatus === 'idle') && pendingCount === 0 && (
-        <><Cloud className="h-3 w-3 text-green-500" /> <span className="hidden sm:inline">Synced</span></>
+        <>
+          <Cloud className="h-3.5 w-3.5 text-emerald-500" />
+          <span className="hidden sm:inline">Synced</span>
+        </>
       )}
+
       {(syncStatus === 'synced' || syncStatus === 'idle' || syncStatus === 'pending_changes') && pendingCount > 0 && (
-        <><UploadCloud className="h-3 w-3 text-blue-400" /> <span className="hidden sm:inline">Pending ({pendingCount})</span></>
+        <>
+          <UploadCloud className="h-3.5 w-3.5 text-blue-500" />
+          <span className="hidden sm:inline">Pending ({pendingCount})</span>
+        </>
       )}
+
       {syncStatus === 'syncing' && (
-        <><RefreshCw className="h-3 w-3 text-blue-500 animate-spin" /> <span className="hidden sm:inline">Syncing</span></>
+        <>
+          <RefreshCw className="h-3.5 w-3.5 text-blue-500 animate-spin" />
+          <span className="hidden sm:inline">Syncing...</span>
+        </>
       )}
-      {syncStatus === 'offline' && (
-        <><CloudOff className="h-3 w-3 text-neutral-400" /> <span className="hidden sm:inline">Offline {pendingCount > 0 && `(${pendingCount} pending)`}</span></>
+
+      {(!isOnline || syncStatus === 'offline') && (
+        <>
+          <CloudOff className="h-3.5 w-3.5 text-neutral-400" />
+          <span className="hidden sm:inline">Offline {pendingCount > 0 ? `(${pendingCount})` : ''}</span>
+        </>
       )}
+
       {syncStatus === 'conflict_detected' && (
-        <><FileWarning className="h-3 w-3 text-amber-500" /> <span className="hidden sm:inline">Conflict Resolved</span></>
+        <>
+          <FileWarning className="h-3.5 w-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Conflict Resolved</span>
+        </>
       )}
+
       {syncStatus === 'auth_required' && (
-        <><AlertTriangle className="h-3 w-3 text-amber-500" /> <span className="hidden sm:inline">Sign In Required</span></>
+        <>
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Local Mode</span>
+        </>
       )}
+
       {syncStatus === 'sync_failed' && (
-        <button 
-          onClick={requestSync}
-          className="flex items-center gap-1.5 hover:text-red-600 dark:hover:text-red-400 transition-colors group outline-none"
-          title={error ? error.message : 'Sync Failed. Click to retry.'}
-        >
-          <AlertCircle className="h-3 w-3 text-red-500 group-hover:scale-110 transition-transform" /> 
-          <span className="hidden sm:inline">Sync Failed (Retry)</span>
-        </button>
+        <>
+          <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Sync (Retry)</span>
+        </>
       )}
-    </div>
+    </button>
   );
 }

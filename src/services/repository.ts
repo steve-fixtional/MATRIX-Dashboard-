@@ -1,5 +1,6 @@
 import { getDB, MatrixDB } from './db';
 import { BaseEntity, SyncStatus } from '../domain/types';
+import { crossTabSync } from './crossTabSync';
 
 export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'projects' | 'files';
 
@@ -60,6 +61,7 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     }) as T;
 
     await db.put(this.storeName, entity);
+    crossTabSync.broadcastDataChange(this.storeName, entity.id, 'create');
     return entity;
   }
 
@@ -88,6 +90,7 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     }) as T;
 
     await db.put(this.storeName, entity);
+    crossTabSync.broadcastDataChange(this.storeName, entity.id, 'update');
     return entity;
   }
 
@@ -114,6 +117,7 @@ export class Repository<K extends StoreName, T extends EntityFor<K> = EntityFor<
     } else {
         await db.put(this.storeName, deletedEntity);
     }
+    crossTabSync.broadcastDataChange(this.storeName, id, 'delete');
   }
 
   async list(includeDeleted = false): Promise<T[]> {

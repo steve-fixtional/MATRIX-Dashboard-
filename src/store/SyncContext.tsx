@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { syncEngine, SyncStateString } from '../services/sync';
+import { crossTabSync } from '../services/crossTabSync';
 import { useAuth } from './AuthContext';
 
 interface SyncContextType {
@@ -59,10 +60,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     syncEngine.getPendingCount().then(setPendingCount).catch(console.error);
     syncEngine.getLastSyncedAt().then(setLastSyncedAt).catch(console.error);
 
+    // Cross-tab data change listener to update counts
+    const unsubscribeData = crossTabSync.onDataChange(() => {
+      syncEngine.getPendingCount().then(setPendingCount).catch(console.error);
+      syncEngine.getLastSyncedAt().then(setLastSyncedAt).catch(console.error);
+    });
+
+    const unsubscribeSync = crossTabSync.onSyncState((event) => {
+      if (event.lastSyncedAt) setLastSyncedAt(event.lastSyncedAt);
+      if (typeof event.pendingCount === 'number') setPendingCount(event.pendingCount);
+      if (event.status && event.status !== 'syncing') setSyncStatus(event.status as SyncStateString);
+    });
+
     return () => {
       if (syncEngine.onSyncStateChange === handleStateChange) {
         syncEngine.onSyncStateChange = prevListener;
       }
+      unsubscribeData();
+      unsubscribeSync();
     };
   }, []);
 

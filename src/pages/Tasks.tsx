@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Task, TaskPriority } from '../domain/types';
 import { getTasks, saveTask, deleteTask } from '../services/taskService';
+import { crossTabSync } from '../services/crossTabSync';
 import { ListTodo, Plus, Inbox, Calendar, CheckCircle2 } from 'lucide-react';
 import { PageWrapper } from '../components/layout/PageWrapper';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -24,6 +25,12 @@ export function Tasks() {
 
   useEffect(() => {
     loadTasks();
+    const unsubscribe = crossTabSync.onDataChange((event) => {
+      if (event.storeName === 'tasks') {
+        loadTasks();
+      }
+    });
+    return () => unsubscribe();
   }, [loadTasks]);
 
   // Check URL params for "new" trigger or "id" selection
