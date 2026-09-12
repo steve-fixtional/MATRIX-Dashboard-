@@ -4,6 +4,7 @@ import { collection, doc, query, where, writeBatch, getDocs } from 'firebase/fir
 import { BaseEntity } from '../domain/types';
 import { isClipboardSyncEnabled } from './clipboardService';
 import { vaultSyncEngine } from './vault/vaultSyncService';
+import { fileSyncEngine } from './storage/fileSyncEngine';
 import { withTimeout } from '../utils';
 import { crossTabSync } from './crossTabSync';
 
@@ -77,7 +78,7 @@ export class SyncEngine {
   async getPendingCount(): Promise<number> {
     const localDb = await getDB();
     let count = 0;
-    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences', 'projects'];
+    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences', 'projects', 'files', 'folders'];
     for (const c of collections) {
       try {
         const tx = localDb.transaction(c, 'readonly');
@@ -101,7 +102,7 @@ export class SyncEngine {
   async getLastSyncedAt(): Promise<number | null> {
     const localDb = await getDB();
     let maxTime = 0;
-    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences', 'projects'];
+    const collections: CollectionName[] = ['notes', 'tasks', 'events', 'clipboard', 'preferences', 'projects', 'files', 'folders'];
     for (const c of collections) {
       try {
         const meta = await localDb.get('syncMeta', c);
@@ -255,7 +256,7 @@ export class SyncEngine {
    */
   private async executeLocalSync(): Promise<void> {
     const localDb = await getDB();
-    const collections: CollectionName[] = ['projects', 'notes', 'tasks', 'events', 'preferences', 'clipboard'];
+    const collections: CollectionName[] = ['projects', 'notes', 'tasks', 'events', 'preferences', 'clipboard', 'files', 'folders'];
     const now = Date.now();
 
     for (const collectionName of collections) {
@@ -306,6 +307,7 @@ export class SyncEngine {
     await this.syncCollection('preferences');
     if (isClipboardSyncEnabled()) {
       await this.syncCollection('clipboard');
+    await fileSyncEngine.syncAll();
     }
     // Synchronize encrypted password vault
     await vaultSyncEngine.sync(true);
@@ -386,11 +388,17 @@ export class SyncEngine {
       const chunk = toPush.slice(i, i + CHUNK_SIZE);
       const batch = writeBatch(db);
 
+      
       for (const local of chunk) {
+        // Skip cloud push for explicitly local files
+        if (collectionName === 'files' && (local as any).storageProvider === 'local') {
+          continue;
+        }
         const { syncStatus, syncError, ...remoteObj } = local as any;
         const docRef = doc(db, `users/${userId}/${collectionName}/${local.id}`);
         batch.set(docRef, remoteObj);
       }
+
 
       try {
         await withTimeout(batch.commit(), 5000, `Uploading ${collectionName}`);
@@ -431,7 +439,7 @@ export class SyncEngine {
     const lastSyncedAt = await this.getLastSyncedAt();
     const pendingCount = await this.getPendingCount();
 
-    const collections: CollectionName[] = ['projects', 'notes', 'tasks', 'events', 'clipboard', 'preferences'];
+    const collections: CollectionName[] = ['projects', 'notes', 'tasks', 'events', 'clipboard', 'preferences', 'files', 'folders'];
     const details: Record<string, { total: number; pending: number }> = {};
 
     for (const c of collections) {

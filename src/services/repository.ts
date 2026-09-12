@@ -2,7 +2,7 @@ import { getDB, MatrixDB } from './db';
 import { BaseEntity, SyncStatus } from '../domain/types';
 import { crossTabSync } from './crossTabSync';
 
-export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'projects' | 'files';
+export type StoreName = 'notes' | 'tasks' | 'events' | 'clipboard' | 'projects' | 'files' | 'folders';
 
 export type EntityFor<K extends StoreName> = MatrixDB[K]['value'] & BaseEntity;
 

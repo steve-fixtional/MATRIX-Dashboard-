@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Note, Task, CalendarEvent, ClipboardItem, DashboardPreference, AppSettings, Project, MatrixFile } from '../domain/types';
+import { Note, Task, CalendarEvent, ClipboardItem, DashboardPreference, AppSettings, Project, MatrixFile, MatrixFolder } from '../domain/types';
 import { StoredVaultRecord, StoredVaultMeta } from '../domain/vaultTypes';
 
 export interface MatrixDB extends DBSchema {
@@ -31,7 +31,23 @@ export interface MatrixDB extends DBSchema {
   files: {
     key: string;
     value: MatrixFile;
-    indexes: { 'by-updatedAt': number, 'by-syncStatus': string, 'by-relatedEntityIds': string };
+    indexes: {
+      'by-updatedAt': number;
+      'by-syncStatus': string;
+      'by-relatedEntityIds': string;
+      'by-parentFolderId': string;
+      'by-userId': string;
+    };
+  };
+  folders: {
+    key: string;
+    value: MatrixFolder;
+    indexes: {
+      'by-updatedAt': number;
+      'by-syncStatus': string;
+      'by-parentFolderId': string;
+      'by-userId': string;
+    };
   };
   fileBlobs: {
     key: string;
@@ -66,7 +82,7 @@ export function resetDBPromise() {
 
 export function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<MatrixDB>('matrix-db', 7, {
+    dbPromise = openDB<MatrixDB>('matrix-db', 8, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains('notes')) {
           const store = db.createObjectStore('notes', { keyPath: 'id' });
@@ -122,9 +138,29 @@ export function getDB() {
           store.createIndex('by-updatedAt', 'updatedAt');
           store.createIndex('by-syncStatus', 'syncStatus');
           store.createIndex('by-relatedEntityIds', 'relatedEntityIds', { multiEntry: true });
+          store.createIndex('by-parentFolderId', 'parentFolderId');
+          store.createIndex('by-userId', 'userId');
         } else {
           const store = transaction.objectStore('files');
           if (oldVersion < 6 && !store.indexNames.contains('by-relatedEntityIds')) store.createIndex('by-relatedEntityIds', 'relatedEntityIds', { multiEntry: true });
+          if (oldVersion < 8) {
+            if (!store.indexNames.contains('by-parentFolderId')) store.createIndex('by-parentFolderId', 'parentFolderId');
+            if (!store.indexNames.contains('by-userId')) store.createIndex('by-userId', 'userId');
+          }
+        }
+
+        if (!db.objectStoreNames.contains('folders')) {
+          const store = db.createObjectStore('folders', { keyPath: 'id' });
+          store.createIndex('by-updatedAt', 'updatedAt');
+          store.createIndex('by-syncStatus', 'syncStatus');
+          store.createIndex('by-parentFolderId', 'parentFolderId');
+          store.createIndex('by-userId', 'userId');
+        } else {
+          const store = transaction.objectStore('folders');
+          if (oldVersion < 8) {
+            if (!store.indexNames.contains('by-parentFolderId')) store.createIndex('by-parentFolderId', 'parentFolderId');
+            if (!store.indexNames.contains('by-userId')) store.createIndex('by-userId', 'userId');
+          }
         }
 
         if (!db.objectStoreNames.contains('fileBlobs')) {

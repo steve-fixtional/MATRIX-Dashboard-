@@ -253,6 +253,15 @@ service cloud.firestore {
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
+      
+      match /folders/{folderId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+      match /files/{fileId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      }
       match /vault_meta/{metaId} {
         allow read: if isSignedIn() && request.auth.uid == userId;
         allow create: if isSignedIn() 

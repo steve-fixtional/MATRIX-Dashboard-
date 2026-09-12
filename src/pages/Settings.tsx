@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { PageWrapper } from '../components/layout/PageWrapper';
-import { User, Palette, LayoutDashboard, Calendar, CloudRain, RefreshCw, Layers, ShieldCheck, Info, ChevronLeft, ArrowLeft } from 'lucide-react';
+import { User, Palette, LayoutDashboard, Calendar, CloudRain, RefreshCw, Layers, ShieldCheck, Info, ChevronLeft, ArrowLeft , X } from 'lucide-react';
 import { cn } from '../utils';
 import { useEffect } from 'react';
 
@@ -11,11 +11,12 @@ import { DashboardSettings } from './settings/DashboardSettings';
 import { CalendarSettings } from './settings/CalendarSettings';
 import { WeatherSettings } from './settings/WeatherSettings';
 import { SyncSettings } from './settings/SyncSettings';
+import { StorageSettings } from './settings/StorageSettings';
 import { IntegrationSettings } from './settings/IntegrationSettings';
 import { NotificationSettings } from './settings/NotificationSettings';
 import { SecuritySettings } from './settings/SecuritySettings';
 import { AboutSettings } from './settings/AboutSettings';
-import { Bell } from 'lucide-react';
+import { Bell, Database } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
   { id: 'account', name: 'Account', icon: User, path: '/settings/account' },
@@ -24,6 +25,7 @@ const SETTINGS_SECTIONS = [
   { id: 'calendar', name: 'Calendar', icon: Calendar, path: '/settings/calendar' },
   { id: 'weather', name: 'Weather', icon: CloudRain, path: '/settings/weather' },
   { id: 'notifications', name: 'Notifications', icon: Bell, path: '/settings/notifications' },
+  { id: 'storage', name: 'Storage', icon: Database, path: '/settings/storage' },
   { id: 'sync', name: 'Sync & Data', icon: RefreshCw, path: '/settings/sync' },
   { id: 'integrations', name: 'Integrations', icon: Layers, path: '/settings/integrations' },
   { id: 'security', name: 'Security & Privacy', icon: ShieldCheck, path: '/settings/security' },
@@ -68,7 +70,14 @@ export function Settings() {
             >
                <ArrowLeft className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             </button>
-            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">Settings</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 flex-1">Settings</h1>
+            <button 
+              onClick={handleBack}
+              className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 focus:outline-none"
+              title="Close Settings"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
           <nav className="flex-1 px-3 pb-6 flex flex-col gap-1">
             {SETTINGS_SECTIONS.map((section) => (
@@ -101,6 +110,14 @@ export function Settings() {
                 <ChevronLeft className="h-5 w-5 -ml-1" />
                 Back to Settings
               </NavLink>
+              <div className="flex-1" />
+              <button 
+                onClick={handleBack}
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 focus:outline-none"
+                title="Close Settings"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
           )}
           
@@ -117,6 +134,7 @@ export function Settings() {
               <Route path="calendar" element={<CalendarSettings />} />
               <Route path="weather" element={<WeatherSettings />} />
               <Route path="notifications" element={<NotificationSettings />} />
+              <Route path="storage" element={<StorageSettings />} />
               <Route path="sync" element={<SyncSettings />} />
               <Route path="integrations" element={<IntegrationSettings />} />
               <Route path="security" element={<SecuritySettings />} />

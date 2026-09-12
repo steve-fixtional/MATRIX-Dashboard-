@@ -18,6 +18,7 @@ import { Settings } from './pages/Settings';
 import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/projects/ProjectDetail';
 import { Passwords } from './pages/Passwords';
+import { Files } from './pages/Files';
 import { AnimatePresence } from 'motion/react';
 import { EmptyState } from './components/ui/EmptyState';
 import { Compass } from 'lucide-react';
@@ -42,6 +43,7 @@ function AnimatedRoutes() {
         <Route path="/passwords" element={<Passwords />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/files" element={<Files />} />
         <Route path="/settings/*" element={<Settings />} />
         <Route path="*" element={
           <PageWrapper className="pt-12">

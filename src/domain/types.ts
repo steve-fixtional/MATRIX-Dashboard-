@@ -13,18 +13,54 @@ export interface BaseEntity {
 
 export type ProjectStatus = 'active' | 'completed' | 'archived';
 
-export type StorageProvider = 'local' | 'google_drive' | 'remote';
+export type StorageProvider = 'local' | 'cloud' | 'google_drive' | 'remote' | string;
+
+export interface MatrixFileThumbnail {
+  url?: string;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+}
+
+export type FileSyncState = 'synced' | 'uploading' | 'downloading' | 'pending' | 'offline' | 'conflict' | 'error';
 
 export interface MatrixFile extends BaseEntity {
   filename: string;
+  name: string;
+  originalName: string;
   mimeType: string;
   size: number;
   storageProvider: StorageProvider;
-  storageReference: string; // ID in local blob store or Google Drive
+  storageReference: string; // ID in local blob store, cloud key, or Google Drive ID
+  storagePath?: string;
+  parentFolderId: string | null;
   externalUrl?: string; // e.g. webViewLink
   iconUrl?: string; // e.g. iconLink
+  thumbnail?: MatrixFileThumbnail;
+  thumbnailUrl?: string;
   isAvailableOffline: boolean;
   relatedEntityIds: string[]; // Polymorphic relations to projects, notes, tasks, events
+  favorite: boolean;
+  fileSyncState?: FileSyncState;
+  localModifiedAt?: number;
+  remoteModifiedAt?: number;
+  fileHash?: string;
+  lastOpenedAt?: number;
+  tags: string[];
+  metadata?: Record<string, any>;
+  userId: string | null;
+  favorite?: boolean;
+  modifiedAt?: number;
+}
+
+export interface MatrixFolder extends BaseEntity {
+  name: string;
+  parentFolderId: string | null;
+  userId: string | null;
+  favorite?: boolean;
+  color?: string;
+  icon?: string;
+  modifiedAt?: number;
 }
 
 export interface Project extends BaseEntity {
@@ -120,4 +156,10 @@ export interface AppSettings extends BaseEntity {
   notificationsEnabled?: boolean;
   tasksNotificationsEnabled?: boolean;
   eventsNotificationsEnabled?: boolean;
+  defaultStorageProvider?: string;
+  storageMode?: 'local' | 'cloud' | 'hybrid';
+  syncEnabled?: boolean;
+  syncAutomatically?: boolean;
+  syncWifiOnly?: boolean;
+  syncFrequency?: 'realtime' | '15m' | '1h' | '12h' | 'daily';
 }
